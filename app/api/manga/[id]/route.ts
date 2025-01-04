@@ -1,5 +1,45 @@
 import { NextResponse } from 'next/server';
 
+// Mapping des genres en français
+const genreTranslations: { [key: string]: string } = {
+  'action': 'Action',
+  'adventure': 'Aventure',
+  'comedy': 'Comédie',
+  'drama': 'Drame',
+  'fantasy': 'Fantaisie',
+  'horror': 'Horreur',
+  'mystery': 'Mystère',
+  'psychological': 'Psychologique',
+  'romance': 'Romance',
+  'sci-fi': 'Science-fiction',
+  'slice of life': 'Tranche de vie',
+  'sports': 'Sports',
+  'supernatural': 'Surnaturel',
+  'thriller': 'Thriller',
+  'isekai': 'Isekai',
+  'martial arts': 'Arts martiaux',
+  'school life': 'Vie scolaire',
+  'harem': 'Harem',
+  'historical': 'Historique',
+  'military': 'Militaire',
+  'music': 'Musical',
+  'shounen': 'Shōnen',
+  'shoujo': 'Shōjo',
+  'seinen': 'Seinen',
+  'josei': 'Josei',
+  'gore': 'Gore',
+  'sexual violence': 'Violence sexuelle',
+  'magic': 'Magie',
+  'demons': 'Démons',
+  'mecha': 'Mecha',
+  'medical': 'Médical',
+  'police': 'Police',
+  'superhero': 'Super-héros',
+  'vampire': 'Vampire',
+  'yaoi': 'Yaoi',
+  'yuri': 'Yuri'
+};
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
@@ -87,6 +127,14 @@ export async function GET(
       }
     }
 
+    // Extraire et traduire les genres
+    const genres = attributes.tags
+      .filter((tag: any) => tag.group === 'genre')
+      .map((tag: any) => {
+        const genreName = tag.name.en.toLowerCase();
+        return genreTranslations[genreName] || tag.name.fr || tag.name.en;
+      });
+
     // Construire l'objet manga formaté
     const formattedManga = {
       id: manga.id,
@@ -102,9 +150,7 @@ export async function GET(
         total: totalChapters,
         french: frenchChapters
       },
-      genres: attributes.tags
-        .filter((tag: any) => tag.group === 'genre')
-        .map((tag: any) => tag.name.fr || tag.name.en),
+      genres,
       availableLanguages: attributes.availableTranslatedLanguages,
       lastChapter: chaptersData.total > 0 ? chaptersData.data[0].attributes.chapter : null,
       videoUrl

@@ -5,10 +5,12 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Manga } from '@/app/types/manga';
 import Image from 'next/image';
-import { BookOpen, Calendar, Clock, Globe, Heart, Info, Star, Users, ArrowLeft, BookmarkPlus, Play, Share2 } from 'lucide-react';
+import { BookOpen, Calendar, Clock, Globe, Heart, Info, Star, Users, ArrowLeft, BookmarkPlus, Play, Share2, QrCode, Bookmark } from 'lucide-react';
 import { useFavorites } from '@/app/hooks/useFavorites';
 import Layout from '@/app/components/Layout';
 import SynopsisContent, { extractShortSynopsis } from '@/app/components/SynopsisContent';
+import ChaptersList from '@/app/components/ChaptersList';
+import Link from 'next/link';
 
 const DEFAULT_COVER = '/images/default-cover.jpg';
 
@@ -18,6 +20,7 @@ function MangaContent() {
   const mangaId = params.id as string;
   const [manga, setManga] = useState<Manga | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
   const [isInFavorites, setIsInFavorites] = useState(false);
   const [activeTrailer, setActiveTrailer] = useState<string | null>(null);
@@ -26,13 +29,30 @@ function MangaContent() {
   useEffect(() => {
     const fetchMangaDetails = async () => {
       try {
+        setError(null);
+        setLoading(true);
+
+        if (!mangaId) {
+          throw new Error('ID du manga manquant');
+        }
+
         const response = await fetch(`/api/manga/${mangaId}`);
         const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Erreur lors du chargement du manga');
+        }
+
+        if (!data) {
+          throw new Error('Données du manga invalides');
+        }
+
         setManga(data);
         setIsInFavorites(isFavorite(mangaId));
         setTrailers(data.trailers || []);
       } catch (error) {
-        console.error('Erreur lors du chargement du manga:', error);
+        setError(error instanceof Error ? error.message : 'Une erreur est survenue');
+        setManga(null);
       } finally {
         setLoading(false);
       }
@@ -43,6 +63,37 @@ function MangaContent() {
     }
   }, [mangaId]);
 
+  const handleFavoriteClick = () => {
+    try {
+      if (isInFavorites) {
+        removeFromFavorites(manga.id);
+      } else {
+        addToFavorites(manga);
+      }
+      setIsInFavorites(!isInFavorites);
+    } catch (error) {
+      // Afficher une notification d'erreur si nécessaire
+      console.error('Erreur lors de la gestion des favoris:', error);
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: manga.title,
+          text: `Découvrez ${manga.title} sur MangaScraper`,
+          url: window.location.href
+        });
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        // Afficher une notification de succès si nécessaire
+      }
+    } catch (error) {
+      // Ignorer les erreurs de partage (souvent dues à l'annulation par l'utilisateur)
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -51,43 +102,45 @@ function MangaContent() {
     );
   }
 
-  if (!manga) {
+  if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">Manga non trouvé</h1>
-          <p className="text-gray-600 dark:text-gray-400">Le manga que vous recherchez n'existe pas.</p>
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
+            Erreur
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">{error}</p>
+          <button
+            onClick={() => router.back()}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            Retour
+          </button>
         </div>
       </div>
     );
   }
 
-  const handleFavoriteClick = () => {
-    if (isInFavorites) {
-      removeFromFavorites(manga.id);
-    } else {
-      addToFavorites(manga);
-    }
-    setIsInFavorites(!isInFavorites);
-  };
-
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: manga.title,
-          text: `Découvrez ${manga.title} sur MangaScraper`,
-          url: window.location.href
-        });
-      } catch (err) {
-        console.log('Erreur lors du partage:', err);
-      }
-    } else {
-      // Fallback: copier le lien dans le presse-papier
-      navigator.clipboard.writeText(window.location.href);
-      // TODO: Ajouter une notification de confirmation
-    }
-  };
+  if (!manga) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-2">
+            Manga non trouvé
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            Le manga que vous recherchez n'existe pas ou n'est plus disponible.
+          </p>
+          <button
+            onClick={() => router.back()}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            Retour
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Layout>
@@ -152,16 +205,21 @@ function MangaContent() {
               <div className="flex-grow text-white pb-4 text-center sm:text-left">
                 <div className="flex flex-col sm:flex-row items-center gap-4 mb-2">
                   <h1 className="text-2xl sm:text-4xl font-bold">{manga.title}</h1>
-                  <button
-                    onClick={handleFavoriteClick}
-                    className={`hidden lg:flex p-2 rounded-full transition-colors duration-200 ${
-                      isInFavorites 
-                        ? 'bg-red-500 hover:bg-red-600' 
-                        : 'bg-gray-600 hover:bg-gray-700'
-                    }`}
-                  >
-                    <Heart className={`w-6 h-6 ${isInFavorites ? 'fill-white' : ''}`} />
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm px-3 py-1 bg-gray-700/50 rounded-full">
+                      {manga.year}
+                    </span>
+                    <span className={`text-sm px-3 py-1 rounded-full ${
+                      manga.status === 'ongoing' 
+                        ? 'bg-green-500/50' 
+                        : 'bg-red-500/50'
+                    }`}>
+                      {manga.status === 'ongoing' ? 'En cours' : 'Terminé'}
+                    </span>
+                    <span className="text-sm px-3 py-1 bg-blue-500/50 rounded-full">
+                      {manga.chapterCount?.total || '?'} chapitres
+                    </span>
+                  </div>
                 </div>
 
                 {/* Court synopsis */}
@@ -214,113 +272,124 @@ function MangaContent() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
-            {/* Colonne principale pour d'autres contenus futurs */}
+            {/* Colonne principale */}
             <div className="lg:col-span-2 space-y-4 sm:space-y-6">
+              {/* Liste des chapitres */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+                <ChaptersList mangaId={params.id} />
+              </div>
             </div>
 
             {/* Barre latérale */}
             <div className="space-y-4 sm:space-y-6">
-              {/* Informations */}
-              <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-lg">
+              {/* Lecture et signets */}
+              <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-lg w-72">
                 <div className="p-4 border-b border-gray-100 dark:border-gray-700">
                   <div className="flex justify-between items-center">
-                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">Informations</h2>
-                    <button
-                      onClick={handleShare}
-                      className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
-                      title="Partager"
-                    >
-                      <Share2 className="w-4 h-4 text-gray-500" />
-                    </button>
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-white">Lecture</h2>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {/* TODO: Implémenter les signets */}}
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                        title="Ajouter un signet"
+                      >
+                        <BookmarkPlus className="w-4 h-4 text-gray-500" />
+                      </button>
+                      <button
+                        onClick={handleShare}
+                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                        title="Partager"
+                      >
+                        <Share2 className="w-4 h-4 text-gray-500" />
+                      </button>
+                    </div>
                   </div>
                 </div>
                 
                 <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {/* Stats rapides */}
-                  <div className="grid grid-cols-2 divide-x divide-gray-100 dark:divide-gray-700">
-                    <div className="p-4 text-center">
-                      <div className="flex items-center justify-center gap-2 mb-1">
-                        <BookOpen className="w-4 h-4 text-blue-500" />
-                        <span className="text-sm text-gray-500">Total</span>
-                      </div>
-                      <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {manga.chapterCount?.total || '?'}
-                      </div>
-                    </div>
-                    <div className="p-4 text-center">
-                      <div className="flex items-center justify-center gap-2 mb-1">
-                        <Globe className="w-4 h-4 text-purple-500" />
-                        <span className="text-sm text-gray-500">FR</span>
-                      </div>
-                      <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {manga.chapterCount?.french || '0'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Infos détaillées */}
+                  {/* QR Code pour la reprise de lecture */}
                   <div className="p-4">
-                    <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-600 dark:text-gray-300">
-                          {manga.year || 'Non spécifié'}
-                        </span>
+                        <QrCode className="w-4 h-4 text-purple-500" />
+                        <span className="text-sm text-gray-500">Scanner pour continuer</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Info className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-600 dark:text-gray-300">
-                          {manga.status === 'ongoing' ? 'En cours' : 'Terminé'}
+                    </div>
+                    <div className="bg-white dark:bg-gray-700 p-4 rounded-lg flex items-center justify-center">
+                      <div className="w-full aspect-square bg-gray-100 dark:bg-gray-600 rounded-lg flex items-center justify-center">
+                        <span className="text-xs text-gray-500 dark:text-gray-400 text-center px-2">
+                          QR Code pour reprendre la lecture
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Langues */}
+                  {/* Signets */}
                   <div className="p-4">
-                    <div className="flex flex-wrap gap-1">
-                      {manga.availableLanguages?.map((lang, index) => (
-                        <span
-                          key={index}
-                          className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-xs text-gray-600 dark:text-gray-300"
-                        >
-                          {lang.toUpperCase()}
-                        </span>
-                      ))}
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Bookmark className="w-4 h-4 text-blue-500" />
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">Signets</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {/* Liste des signets - placeholder pour le moment */}
+                      <div className="text-sm text-gray-500 dark:text-gray-400 text-center py-2">
+                        Aucun signet pour le moment
+                      </div>
+                      <button
+                        className="w-full py-2 px-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-300 transition-colors duration-200 flex items-center justify-center gap-2"
+                        onClick={() => {/* TODO: Implémenter l'ajout de signet */}}
+                      >
+                        <BookmarkPlus className="w-4 h-4" />
+                        Ajouter un signet
+                      </button>
                     </div>
                   </div>
 
-                  {/* Bande annonce - uniquement si disponible */}
-                  {manga.videoUrl && (
+                  {/* Bouton de lecture */}
+                  <div className="p-4">
+                    <button
+                      className="w-full py-2.5 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2"
+                      onClick={() => {/* TODO: Implémenter la fonction de lecture */}}
+                    >
+                      <Play className="w-4 h-4" />
+                      Commencer la lecture
+                    </button>
+                  </div>
+
+                  {/* Catégories en format compact */}
+                  {manga.genres && manga.genres.length > 0 && (
                     <div className="p-4">
-                      <div className="relative pt-[56.25%] bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
-                        <iframe
-                          className="absolute inset-0 w-full h-full"
-                          src={manga.videoUrl.replace('watch?v=', 'embed/')}
-                          title="Bande annonce"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                        />
+                      <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                        Catégories
+                      </h3>
+                      <div className="flex flex-wrap gap-1.5">
+                        {manga.genres.map((genre, index) => (
+                          <span
+                            key={index}
+                            className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full text-xs text-gray-600 dark:text-gray-300"
+                          >
+                            {genre}
+                          </span>
+                        ))}
                       </div>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Tags et genres - design plus compact */}
-              {manga.genres && manga.genres.length > 0 && (
-                <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-lg">
-                  <div className="p-4">
-                    <div className="flex flex-wrap gap-1">
-                      {manga.genres.map((genre, index) => (
-                        <span
-                          key={index}
-                          className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs text-gray-600 dark:text-gray-300"
-                        >
-                          {genre}
-                        </span>
-                      ))}
-                    </div>
+              {/* Bande annonce - uniquement si disponible */}
+              {manga.videoUrl && (
+                <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-lg w-72">
+                  <div className="relative pt-[56.25%]">
+                    <iframe
+                      className="absolute inset-0 w-full h-full"
+                      src={manga.videoUrl.replace('watch?v=', 'embed/')}
+                      title="Bande annonce"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
                   </div>
                 </div>
               )}
