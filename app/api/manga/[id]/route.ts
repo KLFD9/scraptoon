@@ -45,18 +45,18 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const id = await params.id;
-    
-    // Construire l'URL de l'API MangaDex
-    const mangaUrl = `https://api.mangadex.org/manga/${id}`;
-    const coverUrl = `https://api.mangadex.org/cover?manga[]=${id}&limit=1`;
-    const chaptersUrl = `https://api.mangadex.org/manga/${id}/feed?translatedLanguage[]=fr&translatedLanguage[]=en&limit=1`;
+    const { id: mangaId } = await Promise.resolve(params);
+
+    // Construire les URLs de l'API MangaDex
+    const mangaUrl = `https://api.mangadex.org/manga/${mangaId}?includes[]=author&includes[]=cover_art`;
+    const chaptersUrl = `https://api.mangadex.org/manga/${mangaId}/feed?translatedLanguage[]=fr&translatedLanguage[]=en&limit=1&order[chapter]=desc&includes[]=scanlation_group`;
+    const aggregateUrl = `https://api.mangadex.org/manga/${mangaId}/aggregate?translatedLanguage[]=fr&translatedLanguage[]=en`;
 
     // Récupérer les données du manga
-    const [mangaResponse, coverResponse, chaptersResponse] = await Promise.all([
+    const [mangaResponse, chaptersResponse, aggregateResponse] = await Promise.all([
       fetch(mangaUrl),
-      fetch(coverUrl),
-      fetch(chaptersUrl)
+      fetch(chaptersUrl),
+      fetch(aggregateUrl)
     ]);
 
     if (!mangaResponse.ok) {
@@ -64,8 +64,8 @@ export async function GET(
     }
 
     const mangaData = await mangaResponse.json();
-    const coverData = await coverResponse.json();
     const chaptersData = await chaptersResponse.json();
+    const aggregateData = await aggregateResponse.json();
 
     // Extraire les informations nécessaires
     const manga = mangaData.data;
@@ -73,25 +73,13 @@ export async function GET(
     const relationships = manga.relationships;
 
     // Trouver la couverture
-    let coverFileName = '';
-    if (coverData.data && coverData.data.length > 0) {
-      coverFileName = coverData.data[0].attributes.fileName;
-    } else {
-      // Chercher dans les relations si la couverture n'est pas trouvée via l'API cover
-      const coverRel = relationships.find((rel: any) => rel.type === 'cover_art');
-      if (coverRel && coverRel.attributes) {
-        coverFileName = coverRel.attributes.fileName;
-      }
-    }
+    const coverRel = relationships.find((rel: any) => rel.type === 'cover_art');
+    const coverFileName = coverRel?.attributes?.fileName || '';
 
     // Trouver l'auteur
     const author = relationships.find((rel: any) => rel.type === 'author')?.attributes?.name;
 
     // Calculer le nombre de chapitres et les chapitres français
-    const aggregateUrl = `https://api.mangadex.org/manga/${id}/aggregate`;
-    const aggregateResponse = await fetch(aggregateUrl);
-    const aggregateData = await aggregateResponse.json();
-    
     let totalChapters = 0;
     let frenchChapters = 0;
 
@@ -111,9 +99,9 @@ export async function GET(
     // Formater la description
     const description = attributes.description.fr || attributes.description.en || Object.values(attributes.description)[0];
     const formattedDescription = description
-      ? description.replace(/\[(\w+)\]/g, '') // Supprimer les balises [url], etc.
-                                .replace(/\n+/g, '\n') // Normaliser les sauts de ligne
-                                .trim()
+      ? description.replace(/\[(\w+)\]/g, '')
+                  .replace(/\n+/g, '\n')
+                  .trim()
       : 'Aucune description disponible.';
 
     // Extraire la vidéo YouTube des liens externes
@@ -152,7 +140,9 @@ export async function GET(
       },
       genres,
       availableLanguages: attributes.availableTranslatedLanguages,
-      lastChapter: chaptersData.total > 0 ? chaptersData.data[0].attributes.chapter : null,
+      lastChapter: chaptersData.data && chaptersData.data.length > 0 
+        ? chaptersData.data[0].attributes.chapter 
+        : null,
       videoUrl
     };
 

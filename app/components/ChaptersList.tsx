@@ -1,18 +1,38 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, ExternalLink, Flag, Globe, ArrowUpDown, Calendar, Hash } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 
 interface Chapter {
   id: string;
   chapter: string;
   title: string | null;
-  language: string;
-  pages: number;
-  publishedAt: string;
-  readableAt: string;
-  group: string;
-  externalUrl: string;
+  publishedAt: string | null;
+  url: string;
+  source: string;
+}
+
+interface Pagination {
+  currentPage: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+  itemsPerPage: number;
+  totalItems: number;
+}
+
+interface Source {
+  name: string;
+  url: string;
+  titleNo: string;
+}
+
+interface ChaptersResponse {
+  chapters: Chapter[];
+  pagination: Pagination;
+  source: Source;
+  error?: string;
 }
 
 interface ChaptersListProps {
@@ -23,30 +43,26 @@ type SortOption = 'newest' | 'oldest' | 'chapter-asc' | 'chapter-desc';
 
 export default function ChaptersList({ mangaId }: ChaptersListProps) {
   const [chapters, setChapters] = useState<Chapter[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
+  const [source, setSource] = useState<Source | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedLanguage, setSelectedLanguage] = useState<'all' | 'fr' | 'en'>('all');
   const [sortBy, setSortBy] = useState<SortOption>('newest');
 
-  const fetchChapters = async (page: number, lang?: string) => {
+  const fetchChapters = async (page: number) => {
     try {
       setIsLoading(true);
-      let url = `/api/manga/${mangaId}/chapters?page=${page}&limit=10`;
-      if (lang && lang !== 'all') {
-        url += `&language=${lang}`;
-      }
+      const url = `/api/manga/${mangaId}/chapters?page=${page}`;
       const response = await fetch(url);
-      const data = await response.json();
+      const data: ChaptersResponse = await response.json();
 
       if (!response.ok) {
         throw new Error(data.error || 'Erreur lors de la récupération des chapitres');
       }
 
       setChapters(data.chapters);
-      setTotalPages(data.totalPages);
-      setCurrentPage(data.currentPage);
+      setPagination(data.pagination);
+      setSource(data.source);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
     } finally {
@@ -55,28 +71,30 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
   };
 
   useEffect(() => {
-    fetchChapters(1, selectedLanguage);
-  }, [mangaId, selectedLanguage]);
+    fetchChapters(1);
+  }, [mangaId]);
 
   const handlePageChange = (newPage: number) => {
-    if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage);
-      fetchChapters(newPage, selectedLanguage);
+    if (pagination && newPage >= 1 && newPage <= pagination.totalPages) {
+      fetchChapters(newPage);
     }
-  };
-
-  const handleLanguageChange = (lang: 'all' | 'fr' | 'en') => {
-    setSelectedLanguage(lang);
-    setCurrentPage(1);
   };
 
   const sortChapters = (chapters: Chapter[]) => {
     const sorted = [...chapters];
     switch (sortBy) {
       case 'newest':
-        return sorted.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+        return sorted.sort((a, b) => {
+          const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+          const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+          return dateB - dateA;
+        });
       case 'oldest':
-        return sorted.sort((a, b) => new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime());
+        return sorted.sort((a, b) => {
+          const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+          const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+          return dateA - dateB;
+        });
       case 'chapter-asc':
         return sorted.sort((a, b) => parseFloat(a.chapter) - parseFloat(b.chapter));
       case 'chapter-desc':
@@ -95,8 +113,8 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
   }
 
   return (
-    <div>
-      {/* En-tête avec titre, compteur et options de tri */}
+    <div className="space-y-4">
+      {/* En-tête avec titre et options de tri */}
       <div className="p-4 border-b border-gray-100 dark:border-gray-700">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="flex items-center justify-between">
@@ -104,41 +122,6 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
               <h2 className="text-lg font-bold text-gray-900 dark:text-white">
                 Chapitres disponibles
               </h2>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleLanguageChange('all')}
-                  className={`p-1.5 rounded-lg transition-colors duration-200 ${
-                    selectedLanguage === 'all'
-                      ? 'bg-gray-100 dark:bg-gray-700'
-                      : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
-                  }`}
-                  title="Toutes les langues"
-                >
-                  <Globe className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => handleLanguageChange('fr')}
-                  className={`p-1.5 rounded-lg transition-colors duration-200 ${
-                    selectedLanguage === 'fr'
-                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-                      : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
-                  }`}
-                  title="Français uniquement"
-                >
-                  <span className="font-semibold">FR</span>
-                </button>
-                <button
-                  onClick={() => handleLanguageChange('en')}
-                  className={`p-1.5 rounded-lg transition-colors duration-200 ${
-                    selectedLanguage === 'en'
-                      ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
-                      : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
-                  }`}
-                  title="Anglais uniquement"
-                >
-                  <span className="font-semibold">EN</span>
-                </button>
-              </div>
             </div>
             <div className="flex items-center gap-2">
               <select
@@ -153,9 +136,11 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
               </select>
             </div>
           </div>
-          <span className="text-sm text-gray-500 dark:text-gray-400 sm:ml-auto">
-            {chapters.length} sur {totalPages * 10}
-          </span>
+          {!isLoading && pagination && (
+            <span className="text-sm text-gray-500 dark:text-gray-400 sm:ml-auto">
+              {chapters.length} chapitres {pagination.totalItems > 0 && `sur ${pagination.totalItems} au total`}
+            </span>
+          )}
         </div>
       </div>
 
@@ -163,110 +148,125 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
         <div className="text-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto"></div>
         </div>
+      ) : chapters.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          Aucun chapitre trouvé
+        </div>
       ) : (
         <div>
           {/* Liste des chapitres */}
           <div className="divide-y divide-gray-100 dark:divide-gray-700">
             {sortChapters(chapters).map((chapter) => (
-              <div
+              <Link
                 key={chapter.id}
-                className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-200"
+                href={`/manga/${mangaId}/chapter/${chapter.id}`}
+                className="block p-4 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <span className="font-semibold min-w-[60px]">
-                      Ch. {chapter.chapter}
-                    </span>
-                    {chapter.title && (
-                      <span className="text-gray-600 dark:text-gray-400 hidden sm:inline">
-                        {chapter.title}
-                      </span>
-                    )}
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${
-                      chapter.language === 'fr' 
-                        ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-                        : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
-                    }`}>
-                      {chapter.language.toUpperCase()}
-                    </span>
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-semibold">
+                      {chapter.chapter}
+                      {chapter.title && ` - ${chapter.title}`}
+                    </h3>
+                    <p className="text-sm text-gray-400">
+                      {chapter.publishedAt}
+                    </p>
                   </div>
-                  <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
-                    <span>{new Date(chapter.publishedAt).toLocaleDateString()}</span>
-                    <a
-                      href={chapter.externalUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="p-1 hover:text-blue-500 transition-colors duration-200"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
+                  <div className="text-sm text-gray-400">
+                    <ChevronRight className="w-5 h-5" />
                   </div>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
 
           {/* Pagination */}
-          <div className="flex items-center justify-center p-4 border-t border-gray-100 dark:border-gray-700">
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              
-              <div className="flex items-center space-x-1">
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  let pageNumber;
-                  if (totalPages <= 5) {
-                    pageNumber = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNumber = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNumber = totalPages - 4 + i;
-                  } else {
-                    pageNumber = currentPage - 2 + i;
-                  }
-
-                  return (
-                    <button
-                      key={pageNumber}
-                      onClick={() => handlePageChange(pageNumber)}
-                      className={`w-8 h-8 rounded-full ${
-                        currentPage === pageNumber
-                          ? 'bg-blue-500 text-white'
-                          : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                      } transition-colors duration-200`}
-                    >
-                      {pageNumber}
-                    </button>
-                  );
-                })}
+          {pagination && pagination.totalPages > 1 && (
+            <div className="flex flex-col items-center justify-center gap-4 p-4 border-t border-gray-100 dark:border-gray-700">
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage - 1)}
+                  disabled={!pagination.hasPreviousPage}
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
                 
-                {totalPages > 5 && currentPage < totalPages - 2 && (
-                  <>
-                    <span className="px-1">...</span>
-                    <button
-                      onClick={() => handlePageChange(totalPages)}
-                      className="w-8 h-8 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
-                    >
-                      {totalPages}
-                    </button>
-                  </>
-                )}
-              </div>
+                <div className="flex items-center space-x-1">
+                  {(() => {
+                    const pages = [];
+                    const maxVisible = 5;
+                    const totalPages = pagination.totalPages;
+                    const current = pagination.currentPage;
+                    
+                    // Toujours afficher la première page
+                    if (current > 3) {
+                      pages.push(1);
+                      if (current > 4) pages.push('...');
+                    }
+                    
+                    // Pages autour de la page courante
+                    for (let i = Math.max(1, current - 1); i <= Math.min(totalPages, current + 1); i++) {
+                      pages.push(i);
+                    }
+                    
+                    // Toujours afficher la dernière page
+                    if (current < totalPages - 2) {
+                      if (current < totalPages - 3) pages.push('...');
+                      pages.push(totalPages);
+                    }
+                    
+                    return pages.map((pageNum, index) => 
+                      typeof pageNum === 'number' ? (
+                        <button
+                          key={index}
+                          onClick={() => handlePageChange(pageNum)}
+                          className={`w-8 h-8 rounded-full ${
+                            pagination.currentPage === pageNum
+                              ? 'bg-blue-500 text-white'
+                              : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      ) : (
+                        <span key={index} className="px-2">
+                          {pageNum}
+                        </span>
+                      )
+                    );
+                  })()}
+                </div>
 
-              <button
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
+                <button
+                  onClick={() => handlePageChange(pagination.currentPage + 1)}
+                  disabled={!pagination.hasNextPage}
+                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+              
+              {/* Sélecteur de page */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">Aller à la page</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={pagination.totalPages}
+                  value={pagination.currentPage}
+                  onChange={(e) => {
+                    const page = parseInt(e.target.value);
+                    if (page >= 1 && page <= pagination.totalPages) {
+                      handlePageChange(page);
+                    }
+                  }}
+                  className="w-16 px-2 py-1 text-sm bg-transparent border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-sm text-gray-500">sur {pagination.totalPages}</span>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>
