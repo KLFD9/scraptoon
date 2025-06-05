@@ -44,6 +44,8 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Fixed image aspect ratio warnings using explicit style attributes.
 - Hook `useChapterNavigation` to manage chapter navigation.
 - Progress indicator showing loaded pages vs total while reading.
+- Asynchronous API routes with proper parameter handling.
+- Timestamped error logs for easier debugging.
 - Unified API response with `pageCount` and `pages` array.
 
 ## Usage
