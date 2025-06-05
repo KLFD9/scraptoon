@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ChevronLeft, ChevronRight, List, Settings } from 'lucide-react';
 import ChapterReader from '@/app/components/ChapterReader';
+import { useChapterNavigation, Chapter as NavChapter } from '@/app/hooks/useChapterNavigation';
 
 interface ChapterData {
   title: string;
@@ -17,10 +18,6 @@ interface ChapterData {
   scrapingTime: string;
 }
 
-interface Chapter {
-  id: string;
-  title?: string;
-}
 
 function ChapterReaderContent() {
   const router = useRouter();
@@ -33,8 +30,11 @@ function ChapterReaderContent() {
   const [error, setError] = useState<string | null>(null);
   const [showHeader, setShowHeader] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [allChapters, setAllChapters] = useState<Chapter[]>([]);
-  const [currentChapterIndex, setCurrentChapterIndex] = useState(-1);
+  const [allChapters, setAllChapters] = useState<NavChapter[]>([]);
+  const { prevChapterId, nextChapterId } = useChapterNavigation(
+    allChapters,
+    chapterId
+  );
 
   useEffect(() => {
     const fetchChapterData = async () => {
@@ -52,8 +52,6 @@ function ChapterReaderContent() {
           const chaptersData = await chaptersResponse.json();
           if (chaptersData.chapters) {
             setAllChapters(chaptersData.chapters);
-            const currentIndex = chaptersData.chapters.findIndex((ch: Chapter) => ch.id === chapterId);
-            setCurrentChapterIndex(currentIndex);
           }
         }
 
@@ -225,26 +223,24 @@ function ChapterReaderContent() {
               {/* Navigation entre chapitres */}
               <button
                 onClick={() => {
-                  const prevIndex = currentChapterIndex + 1; // Les chapitres sont triés du plus récent au plus ancien
-                  if (prevIndex < allChapters.length) {
-                    navigateToChapter(allChapters[prevIndex].id);
+                  if (prevChapterId) {
+                    navigateToChapter(prevChapterId);
                   }
                 }}
-                disabled={currentChapterIndex === -1 || currentChapterIndex >= allChapters.length - 1}
+                disabled={!prevChapterId}
                 className="p-2 hover:bg-white/10 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Chapitre précédent"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              
+
               <button
                 onClick={() => {
-                  const nextIndex = currentChapterIndex - 1;
-                  if (nextIndex >= 0) {
-                    navigateToChapter(allChapters[nextIndex].id);
+                  if (nextChapterId) {
+                    navigateToChapter(nextChapterId);
                   }
                 }}
-                disabled={currentChapterIndex === -1 || currentChapterIndex <= 0}
+                disabled={!nextChapterId}
                 className="p-2 hover:bg-white/10 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Chapitre suivant"
               >
@@ -298,24 +294,18 @@ function ChapterReaderContent() {
               </div>
               
               <div className="flex items-center gap-4">
-                {currentChapterIndex < allChapters.length - 1 && (
+                {prevChapterId && (
                   <button
-                    onClick={() => {
-                      const prevIndex = currentChapterIndex + 1;
-                      navigateToChapter(allChapters[prevIndex].id);
-                    }}
+                    onClick={() => navigateToChapter(prevChapterId)}
                     className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-sm"
                   >
                     Chapitre précédent
                   </button>
                 )}
-                
-                {currentChapterIndex > 0 && (
+
+                {nextChapterId && (
                   <button
-                    onClick={() => {
-                      const nextIndex = currentChapterIndex - 1;
-                      navigateToChapter(allChapters[nextIndex].id);
-                    }}
+                    onClick={() => navigateToChapter(nextChapterId)}
                     className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors text-sm"
                   >
                     Chapitre suivant
