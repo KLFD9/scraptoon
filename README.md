@@ -52,6 +52,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Header visibility responds to scroll direction while reading.
 
 - Chapter images fetched via the MangaDex API with cached results (fallback to scraping).
+- Manga details cached for an hour to minimize API calls.
 - Browser instance reused across chapter searches for faster scraping.
 
 - Rate limiter on `/api/scraper` prevents abusive calls.

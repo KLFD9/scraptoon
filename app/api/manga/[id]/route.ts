@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { Cache } from '@/app/utils/cache';
 import type {
   MangaDexAggregate,
   MangaDexChaptersResponse,
@@ -48,12 +49,39 @@ const genreTranslations: { [key: string]: string } = {
   'yuri': 'Yuri'
 };
 
+interface MangaDetails {
+  id: string;
+  title: string;
+  description: string;
+  cover: string | null;
+  author?: string;
+  year?: number;
+  status: string;
+  type: string;
+  isAvailableInFrench: boolean;
+  chapterCount: {
+    total: number;
+    french: number;
+  };
+  genres: string[];
+  availableLanguages: string[];
+  lastChapter: string | null;
+  videoUrl: string | null;
+}
+
+const mangaCache = new Cache<MangaDetails>(3600000);
+
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
     const { id: mangaId } = await Promise.resolve(params);
+
+    const cached = await mangaCache.get(mangaId);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
 
     // Construire les URLs de l'API MangaDex
     const mangaUrl = `https://api.mangadex.org/manga/${mangaId}?includes[]=author&includes[]=cover_art`;
@@ -137,7 +165,7 @@ export async function GET(
       });
 
     // Construire l'objet manga formaté
-    const formattedManga = {
+    const formattedManga: MangaDetails = {
       id: manga.id,
       title: attributes.title.fr || attributes.title.en || Object.values(attributes.title)[0],
       description: formattedDescription,
@@ -153,12 +181,12 @@ export async function GET(
       },
       genres,
       availableLanguages: attributes.availableTranslatedLanguages,
-      lastChapter: chaptersData.data && chaptersData.data.length > 0 
-        ? chaptersData.data[0].attributes.chapter 
+      lastChapter: chaptersData.data && chaptersData.data.length > 0
+        ? chaptersData.data[0].attributes.chapter
         : null,
       videoUrl
     };
-
+    await mangaCache.set(mangaId, formattedManga);
     return NextResponse.json(formattedManga);
   } catch (error) {
     console.error('Erreur lors de la récupération des détails du manga:', error);
