@@ -31,6 +31,8 @@ export interface LogData {
   source?: string;
   titleId?: string;
   totalChapters?: number;
+  firstChapter?: unknown;
+  lastChapter?: unknown;
   firstChapter?: ChapterInfo;
   lastChapter?: ChapterInfo;
   cacheKey?: string;

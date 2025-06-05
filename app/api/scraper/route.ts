@@ -1,6 +1,13 @@
 import { Manga } from '@/app/types/manga';
 import { logger } from '@/app/utils/logger';
 import { Cache } from '@/app/utils/cache';
+import type {
+  MangaDexChaptersResponse,
+  MangaDexManga,
+  MangaDexRelationship,
+  MangaDexSearchResponse,
+  MangaDexChapter
+} from '@/app/types/mangadex';
 
 // Cache multi-niveaux (mémoire + Redis) pour les résultats (5 minutes)
 const CACHE_DURATION = 5 * 60 * 1000;
@@ -90,7 +97,7 @@ export async function POST(request: Request) {
       throw new Error(`Erreur MangaDex: ${response.status} - ${errorText}`);
     }
 
-    const data = await response.json();
+    const data: MangaDexSearchResponse = await response.json();
     logger.log('debug', 'Réponse API reçue', {
       total: data.total,
       count: data.data?.length || 0
@@ -101,12 +108,12 @@ export async function POST(request: Request) {
     }
 
     // Transformation des résultats
-    const results: Manga[] = await Promise.all(data.data.map(async (manga: any) => {
+    const results: Manga[] = await Promise.all(data.data.map(async (manga: MangaDexManga) => {
       try {
         // Récupération de la couverture
-        const cover = manga.relationships?.find((rel: any) => rel.type === 'cover_art');
-        const author = manga.relationships?.find((rel: any) => rel.type === 'author');
-        const artist = manga.relationships?.find((rel: any) => rel.type === 'artist');
+        const cover = manga.relationships?.find((rel: MangaDexRelationship) => rel.type === 'cover_art');
+        const author = manga.relationships?.find((rel: MangaDexRelationship) => rel.type === 'author');
+        const artist = manga.relationships?.find((rel: MangaDexRelationship) => rel.type === 'artist');
         
         // Récupération du nombre total de chapitres depuis les attributs du manga
         const totalChapters = manga.attributes?.lastChapter 
@@ -114,14 +121,19 @@ export async function POST(request: Request) {
           : 0;
 
         // Récupération des chapitres traduits
-        const chaptersResponse = await fetch(`https://api.mangadex.org/manga/${manga.id}/feed?limit=0&translatedLanguage[]=fr&includes[]=scanlation_group&order[chapter]=desc`);
-        const chaptersData = await chaptersResponse.json();
+        const chaptersResponse = await fetch(
+          `https://api.mangadex.org/manga/${manga.id}/feed?limit=0&translatedLanguage[]=fr&includes[]=scanlation_group&order[chapter]=desc`
+        );
+        const chaptersData: MangaDexChaptersResponse = await chaptersResponse.json();
         
         // Calcul des chapitres traduits en français
         const frenchChapters = new Set(
           chaptersData.data
-            ?.filter((chapter: any) => chapter.attributes.translatedLanguage === 'fr')
-            ?.map((chapter: any) => chapter.attributes.chapter)
+            ?.filter(
+              (chapter: MangaDexChapter) =>
+                chapter.attributes.translatedLanguage === 'fr'
+            )
+            ?.map((chapter: MangaDexChapter) => chapter.attributes.chapter)
         ).size;
 
         const chapterInfo = {

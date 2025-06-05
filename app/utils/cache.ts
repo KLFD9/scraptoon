@@ -35,7 +35,7 @@ export class Cache<T = unknown> {
       const client = await getRedisClient();
       const val = await client.get(key);
       if (val) {
-        const data = JSON.parse(val);
+        const data = JSON.parse(val) as T;
         this.memoryCache[key] = { data, timestamp: Date.now() };
         return data;
       }

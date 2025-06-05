@@ -48,9 +48,10 @@ const SCRAPING_CONFIGS: Record<string, ScrapingConfig[]> = {
           beforeScroll: async (page: Page) => {
             await page.evaluate(() => {
               // Forcer le chargement des images
-              document.querySelectorAll('img[data-url]').forEach((img: any) => {
-                if (img.dataset.url && !img.src) {
-                  img.src = img.dataset.url;
+              document.querySelectorAll('img[data-url]').forEach(img => {
+                const el = img as HTMLImageElement;
+                if (el.dataset.url && !el.src) {
+                  el.src = el.dataset.url;
                 }
               });
             });
@@ -85,9 +86,10 @@ const SCRAPING_CONFIGS: Record<string, ScrapingConfig[]> = {
               elementsToRemove.forEach(el => el.remove());
               
               // Forcer le chargement des images
-              document.querySelectorAll('img[data-src]').forEach((img: any) => {
-                if (img.dataset.src && !img.src) {
-                  img.src = img.dataset.src;
+              document.querySelectorAll('img[data-src]').forEach(img => {
+                const el = img as HTMLImageElement;
+                if (el.dataset.src && !el.src) {
+                  el.src = el.dataset.src;
                 }
               });
             });
@@ -142,9 +144,10 @@ async function scrapeImages(page: Page, config: ScrapingConfig): Promise<string[
         
         // Attendre et forcer le chargement des images
         await page.evaluate(() => {
-          document.querySelectorAll('img[data-src]').forEach((img: any) => {
-            if (img.dataset.src && !img.src) {
-              img.src = img.dataset.src;
+          document.querySelectorAll('img[data-src]').forEach(img => {
+            const el = img as HTMLImageElement;
+            if (el.dataset.src && !el.src) {
+              el.src = el.dataset.src;
             }
           });
         });

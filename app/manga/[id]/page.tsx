@@ -174,8 +174,8 @@ function MangaContent() {
               fill
               className="object-cover blur-sm brightness-50"
               priority
-              onError={(e: any) => {
-                e.target.src = DEFAULT_COVER;
+              onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                (e.target as HTMLImageElement).src = DEFAULT_COVER;
               }}
             />
           </div>
@@ -191,8 +191,8 @@ function MangaContent() {
                   fill
                   className="object-cover"
                   priority
-                  onError={(e: any) => {
-                    e.target.src = DEFAULT_COVER;
+                  onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                    (e.target as HTMLImageElement).src = DEFAULT_COVER;
                   }}
                 />
               </div>

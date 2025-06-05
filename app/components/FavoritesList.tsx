@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { FavoriteManga, ReadingStatus } from '../types/manga';
+import { Heart, BookOpen, BookX, CheckCircle, Edit3, Trash2, Filter, BarChart2, Search, Calendar, Clock, ArrowUpDown, Star, Info } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { BookOpen, BookX, CheckCircle, Edit3, Trash2, Filter, BarChart2, Search, Clock, ArrowUpDown, Info } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -87,7 +89,7 @@ export default function FavoritesList({
     router.push(`/manga/${mangaId}`);
   };
 
-  const tabs: { status: ReadingStatus; label: string; icon: any }[] = [
+  const tabs: { status: ReadingStatus; label: string; icon: LucideIcon }[] = [
     { status: 'to-read', label: 'À lire', icon: BookOpen },
     { status: 'reading', label: 'En cours', icon: BookX },
     { status: 'completed', label: 'Terminé', icon: CheckCircle },
