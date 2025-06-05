@@ -5,7 +5,7 @@ import { Cache } from '@/app/utils/cache';
 import { logger } from '@/app/utils/logger';
 
 // Cache pour les chapitres (2 heures)
-const chaptersCache = new Cache(7200000);
+const chaptersCache = new Cache<ChaptersResult>(7200000);
 
 interface ChapterData {
   id: string;
@@ -14,6 +14,17 @@ interface ChapterData {
   publishedAt: string | null;
   url: string;
   source: string;
+}
+
+
+interface ChaptersResult {
+  chapters: ChapterData[];
+  totalChapters: number;
+  source: {
+    name: string;
+    url: string;
+    titleId: string;
+  };
 }
 
 interface SourceSearchResult {
@@ -102,6 +113,189 @@ async function setupBrowser() {
   });
 
   await page.setViewport({ width: 1920, height: 1080 });
+
+  return { browser, page };
+}
+
+// Mise à jour de l'interface LogData
+interface LogData {
+  error?: string;
+  stack?: string;
+  attempt?: number;
+  url?: string;
+  mangaId?: string;
+  query?: string;
+  searchQuery?: string;
+  html?: string;
+  timestamp?: string;
+  page?: number;
+  limit?: number;
+  chaptersCount?: number;
+  status?: number;
+  statusText?: string;
+  response?: unknown;
+  title?: string;
+  titles?: string[];
+  availableLanguages?: string[];
+  source?: string;
+  titleId?: string;
+  totalChapters?: number;
+  firstChapter?: ChapterData;
+  lastChapter?: ChapterData;
+  cacheKey?: string;
+  executionTime?: number;
+  maxRetries?: number;
+  delay?: number;
+  blockStatus?: {
+    isBlocked: boolean;
+    hasValidContent: boolean;
+    indicators: Record<string, boolean>;
+  };
+  params?: Record<string, unknown>;
+  variants?: string[];
+  original?: string;
+  totalPages?: number;
+  count?: number;
+  variant?: string;
+  sourceResults?: Array<{
+    source: string;
+    titleId: string;
+    url: string;
+  }>;
+  resultsCount?: number;
+  total?: number;
+  isValidPage?: boolean;
+  googleUrl?: string;
+  pageInfo?: {
+    hasTitle: boolean;
+    hasSynopsis: boolean;
+    hasCover: boolean;
+    hasInfo: boolean;
+    hasChapters: boolean;
+    title: string | null;
+  };
+  elements?: {
+    hasTitle: boolean;
+    hasSynopsis: boolean;
+    hasCover: boolean;
+    hasInfo: boolean;
+    hasChapters: boolean;
+    title: string | null;
+  };
+  formattedTitle?: string;
+  pageStatus?: {
+    hasValidContent: boolean;
+    errors: Record<string, boolean>;
+  };
+  proxyInfo?: {
+    ip: string;
+    country: string;
+    status: string;
+  };
+}
+
+// Fonction pour obtenir un proxy aléatoire
+async function getRandomProxy(): Promise<string | null> {
+  try {
+    // Liste de proxies gratuits (à remplacer par des proxies payants pour la production)
+    const proxyList = [
+      'fr1.proxy.example.com:8080',
+      'fr2.proxy.example.com:8080',
+      'fr3.proxy.example.com:8080'
+    ];
+    
+    return proxyList[Math.floor(Math.random() * proxyList.length)];
+  } catch (error) {
+    logger.log('error', 'Erreur lors de la récupération du proxy', {
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+    return null;
+  }
+}
+
+// Fonction pour configurer le navigateur avec un proxy
+async function setupBrowserWithProxy() {
+  const proxy = await getRandomProxy();
+  if (!proxy) {
+    return setupBrowser();
+  }
+
+  const browser = await puppeteer.launch({
+    headless: false,
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--disable-gpu',
+      '--window-size=1920x1080',
+      '--disable-web-security',
+      '--disable-features=IsolateOrigins,site-per-process',
+      '--disable-blink-features=AutomationControlled',
+      `--proxy-server=${proxy}`
+    ],
+    defaultViewport: null
+  });
+
+  const page = await browser.newPage();
+  
+  // Configuration anti-détection
+  await page.evaluateOnNewDocument(() => {
+    delete Object.getPrototypeOf(navigator).webdriver;
+    // @ts-ignore
+    window.navigator.chrome = {
+      runtime: {},
+    };
+    Object.defineProperty(navigator, 'languages', {
+      get: () => ['fr-FR', 'fr', 'en-US', 'en'],
+    });
+    Object.defineProperty(navigator, 'plugins', {
+      get: () => [
+        {
+          0: {type: "application/x-google-chrome-pdf"},
+          description: "Portable Document Format",
+          filename: "internal-pdf-viewer",
+          length: 1,
+          name: "Chrome PDF Plugin"
+        }
+      ],
+    });
+  });
+
+  // Configuration des en-têtes
+  await page.setExtraHTTPHeaders({
+    'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Connection': 'keep-alive',
+    'Cache-Control': 'max-age=0',
+    'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-platform': '"Windows"',
+    'Upgrade-Insecure-Requests': '1',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-User': '?1',
+    'Sec-Fetch-Dest': 'document'
+  });
+
+  await page.setViewport({ width: 1920, height: 1080 });
+
+  // Vérifier le proxy
+  try {
+    await page.goto('https://api.myip.com', { waitUntil: 'networkidle0' });
+    const proxyInfo = await page.evaluate(() => {
+      return JSON.parse(document.body.textContent || '{}');
+    });
+    
+    logger.log('info', 'Proxy configuré avec succès', {
+      proxyInfo
+    });
+  } catch (error) {
+    logger.log('warning', 'Erreur lors de la vérification du proxy', {
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
 
   return { browser, page };
 }

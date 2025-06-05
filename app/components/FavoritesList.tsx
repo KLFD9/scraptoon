@@ -176,7 +176,7 @@ export default function FavoritesList({
                 onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
                 className="text-sm border rounded-full px-3 py-1.5 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
               >
-                <option value="date">Date d'ajout</option>
+                <option value="date">Date d&apos;ajout</option>
                 <option value="title">Titre</option>
                 <option value="chapters">Chapitres</option>
                 <option value="lastUpdated">Dernière lecture</option>

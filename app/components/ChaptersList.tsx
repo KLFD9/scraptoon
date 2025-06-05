@@ -1,8 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+
 
 interface Chapter {
   id: string;
@@ -48,7 +52,7 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
 
-  const fetchChapters = async (page: number) => {
+  const fetchChapters = useCallback(async (page: number) => {
     try {
       setIsLoading(true);
       const url = `/api/manga/${mangaId}/chapters?page=${page}`;
@@ -66,11 +70,11 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [mangaId]);
 
   useEffect(() => {
     fetchChapters(1);
-  }, [mangaId]);
+  }, [mangaId, fetchChapters]);
 
   const handlePageChange = (newPage: number) => {
     if (pagination && newPage >= 1 && newPage <= pagination.totalPages) {

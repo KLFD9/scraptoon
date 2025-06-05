@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback } from 'react';
 import { useInView } from 'react-intersection-observer';
+import Image from 'next/image';
 
 interface ChapterReaderProps {
   pages: string[];
@@ -78,12 +79,15 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({
               className="relative flex justify-center"
               onMouseEnter={() => handlePageChange(index + 1)}
             >
-              <img
+              <Image
                 src={url}
                 alt={`Page ${index + 1}`}
+                width={800}
+                height={1200}
                 className={`max-w-full h-auto ${loadedImagesRef.current.has(index) ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
                 loading="lazy"
                 onLoad={() => handleImageLoad(index)}
+                loader={({ src }) => src}
               />
               {!loadedImagesRef.current.has(index) && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
