@@ -1,6 +1,4 @@
 import { NextResponse } from 'next/server';
-import { withErrorHandling } from '@/app/utils/errorHandler';
-import { httpRequest } from '@/app/utils/httpClient';
 
 // Mapping des genres en français
 const genreTranslations: { [key: string]: string } = {
@@ -42,10 +40,10 @@ const genreTranslations: { [key: string]: string } = {
   'yuri': 'Yuri'
 };
 
-export const GET = withErrorHandling(async (
+export async function GET(
   request: Request,
   { params }: { params: { id: string } }
-) => {
+) {
   try {
     const { id: mangaId } = await Promise.resolve(params);
 
@@ -56,9 +54,9 @@ export const GET = withErrorHandling(async (
 
     // Récupérer les données du manga
     const [mangaResponse, chaptersResponse, aggregateResponse] = await Promise.all([
-      httpRequest(mangaUrl, undefined, 'mangadex'),
-      httpRequest(chaptersUrl, undefined, 'mangadex'),
-      httpRequest(aggregateUrl, undefined, 'mangadex')
+      fetch(mangaUrl),
+      fetch(chaptersUrl),
+      fetch(aggregateUrl)
     ]);
 
     if (!mangaResponse.ok) {
@@ -156,4 +154,4 @@ export const GET = withErrorHandling(async (
       { status: 500 }
     );
   }
-});
+} 
