@@ -96,9 +96,41 @@ const SCRAPING_CONFIGS: Record<string, ScrapingConfig[]> = {
   ]
 };
 
+
+async function performLazyLoad(
+  page: Page,
+  lazyConfig?: ScrapingConfig['selectors']['lazyLoad']
+) {
+  if (!lazyConfig) return;
+  const { attribute, scrollStep = 1000, maxScrolls = 20, beforeScroll } = lazyConfig;
+  for (let i = 0; i < maxScrolls; i++) {
+    if (beforeScroll) {
+      await beforeScroll(page);
+    }
+    await page.evaluate(step => {
+      window.scrollBy(0, step);
+    }, scrollStep);
+    await page.evaluate(attr => {
+      document.querySelectorAll(`img[${attr}]`).forEach(img => {
+        const el = img as HTMLImageElement;
+        const data = el.getAttribute(attr);
+        if (data && !el.src) {
+          el.src = data;
+        }
+      });
+    }, attribute);
+    await page.waitForTimeout(500);
+  }
+}
+
+async function scrapeImages(page: Page, config: ScrapingConfig): Promise<string[]> {
+  const images = new Map<string, string>();
+  console.log(`📝 Début du scraping avec la configuration ${config.name}`);
+
 async function scrapeImagesRobust(page: Page, config: ScrapingConfig): Promise<string[]> {
   const images = new Map<string, number>();
   console.log(`📝 Début du scraping robuste avec la configuration ${config.name}`);
+
 
   try {
     // Attendre le chargement initial avec timeout réduit
@@ -128,6 +160,52 @@ async function scrapeImagesRobust(page: Page, config: ScrapingConfig): Promise<s
       });
     });
 
+
+    if (config.name === 'webtoons') {
+      // Méthode spécifique pour Webtoons
+      console.log('🔄 Scraping des images Webtoons');
+
+      // Attendre que les images soient chargées
+      await page.waitForSelector('img[data-url]', { timeout: 10000 });
+
+      // Récupérer toutes les URLs d'images
+      const urls = await page.evaluate(() => {
+        const images = document.querySelectorAll('img[data-url]');
+        return Array.from(images)
+          .map(img => img.getAttribute('data-url'))
+          .filter(url => url);
+      });
+
+      urls.forEach(url => {
+        if (url) images.set(url, url);
+      });
+
+    } else {
+      // Méthode générique pour les autres sites
+      console.log('🔄 Scroll progressif');
+      await performLazyLoad(page, config.selectors.lazyLoad);
+
+      const currentUrls = await page.evaluate((selectors) => {
+        const urls = new Set<string>();
+        selectors.forEach(selector => {
+          document.querySelectorAll(selector).forEach(img => {
+            const src = img.getAttribute('src');
+            const dataSrc = img.getAttribute('data-src');
+            const dataUrl = img.getAttribute('data-url');
+            if (src && !src.startsWith('data:')) urls.add(src);
+            if (dataSrc && !dataSrc.startsWith('data:')) urls.add(dataSrc);
+            if (dataUrl && !dataUrl.startsWith('data:')) urls.add(dataUrl);
+          });
+        });
+        return Array.from(urls);
+      }, config.selectors.images);
+
+      currentUrls.forEach(url => {
+        images.set(url, url);
+      });
+
+      console.log(`📊 Images récupérées: ${images.size}`);
+=======
     // Scroll progressif pour charger le contenu lazy
     console.log('🔄 Scroll pour charger le contenu...');
     const scrollSteps = config.selectors.lazyLoad?.maxScrolls || 20;

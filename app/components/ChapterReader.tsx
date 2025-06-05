@@ -116,6 +116,30 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({
 
         {/* Images */}
         <div className="space-y-4">
+          {pages.map((url, index) => (
+            <div
+              key={url}
+              ref={index === currentPage - 1 ? ref : undefined}
+              className="relative flex justify-center"
+              onMouseEnter={() => handlePageChange(index + 1)}
+            >
+              <Image
+                src={url}
+                alt={`Page ${index + 1}`}
+                width={800}
+                height={1200}
+                className={`max-w-full h-auto ${
+                  loadedImagesRef.current.has(index) ? 'opacity-100' : 'opacity-0'
+                } transition-opacity duration-300`}
+                loading="lazy"
+                onLoad={() => handleImageLoad(index)}
+                loader={({ src }) => src}
+                style={{ width: '100%', height: 'auto' }}
+              />
+              {!loadedImagesRef.current.has(index) && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
+                  <div className="animate-pulse text-gray-400">
+                    Chargement...
           {pages.map((url, index) => {
             const dimensions = imageDimensions.get(index);
             const isLoaded = loadedImages.has(index);
@@ -173,6 +197,7 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({
                 {!dimensions && !isLoading && (
                   <div className="bg-gray-800 text-white p-8 text-center rounded-lg">
                     <p>Chargement des dimensions...</p>
+
                   </div>
                 )}
               </div>
