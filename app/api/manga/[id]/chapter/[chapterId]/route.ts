@@ -3,26 +3,6 @@ import puppeteer, { Page, Browser } from 'puppeteer';
 import { Cache } from '@/app/utils/cache';
 
 
-interface ChapterCacheData {
-  id: string;
-  mangaId: string;
-  title: string;
-  chapter: string | null;
-  volume: string | null;
-  pageCount: number;
-  pages: string[];
-  language: string;
-  scrapingMethod: string | null;
-  mangaTitle: string;
-  publishAt: string;
-  readableAt: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-// Cache pour les images de chapitres (1 heure)
-const cache = new Cache<ChapterCacheData>(3600000);
-=======
 // Préférer l'API MangaDex puis basculer sur Puppeteer en secours
 // Cache pour les images de chapitres (1 heure)
 const cache = new Cache<ChapterResult>(3600000);
