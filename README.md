@@ -46,9 +46,11 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Progress indicator showing loaded pages vs total while reading.
 - Asynchronous API routes with proper parameter handling.
 - Timestamped error logs for easier debugging.
+- Unified API response with `pageCount` and `pages` array.
 
 ## Usage
 
 When you open a chapter, a progress bar at the top indicates how many pages have
 finished loading compared to the total number of pages. This helps you monitor
 the loading status as you read
+and relies on the `pageCount`/`pages` values returned by the API.
