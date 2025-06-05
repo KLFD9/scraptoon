@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Chapter {
   id: string;
@@ -44,7 +44,6 @@ type SortOption = 'newest' | 'oldest' | 'chapter-asc' | 'chapter-desc';
 export default function ChaptersList({ mangaId }: ChaptersListProps) {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
-  const [source, setSource] = useState<Source | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('newest');
@@ -62,7 +61,6 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
 
       setChapters(data.chapters);
       setPagination(data.pagination);
-      setSource(data.source);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Une erreur est survenue');
     } finally {
@@ -195,7 +193,6 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
                 <div className="flex items-center space-x-1">
                   {(() => {
                     const pages = [];
-                    const maxVisible = 5;
                     const totalPages = pagination.totalPages;
                     const current = pagination.currentPage;
                     

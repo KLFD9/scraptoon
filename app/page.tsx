@@ -27,11 +27,9 @@ export default function Home() {
 
   const {
     favorites,
-    addToFavorites,
     removeFromFavorites,
     updateReadingStatus,
-    addNote,
-    isFavorite
+    addNote
   } = useFavorites();
 
   useEffect(() => {

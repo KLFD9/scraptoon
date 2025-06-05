@@ -7,13 +7,6 @@ import { logger } from '@/app/utils/logger';
 // Cache pour les chapitres (2 heures)
 const chaptersCache = new Cache(7200000);
 
-// Types pour les résultats de recherche
-interface SearchResult {
-  titleId: string;
-  url: string;
-  score: number;
-}
-
 interface ChapterData {
   id: string;
   chapter: string;
@@ -22,12 +15,6 @@ interface ChapterData {
   url: string;
   source: string;
 }
-
-interface ChaptersResult {
-  chapters: ChapterData[];
-  totalChapters: number;
-}
-
 
 interface SourceSearchResult {
   source: string;
@@ -115,185 +102,6 @@ async function setupBrowser() {
   });
 
   await page.setViewport({ width: 1920, height: 1080 });
-
-  return { browser, page };
-}
-
-// Mise à jour de l'interface LogData
-interface LogData {
-  error?: string;
-  stack?: string;
-  attempt?: number;
-  url?: string;
-  mangaId?: string;
-  query?: string;
-  searchQuery?: string;
-  html?: string;
-  timestamp?: string;
-  page?: number;
-  limit?: number;
-  chaptersCount?: number;
-  status?: number;
-  statusText?: string;
-  response?: any;
-  title?: string;
-  titles?: string[];
-  availableLanguages?: string[];
-  source?: string;
-  titleId?: string;
-  totalChapters?: number;
-  firstChapter?: any;
-  lastChapter?: any;
-  cacheKey?: string;
-  executionTime?: number;
-  maxRetries?: number;
-  delay?: number;
-  blockStatus?: any;
-  params?: any;
-  variants?: string[];
-  original?: string;
-  totalPages?: number;
-  count?: number;
-  variant?: string;
-  sourceResults?: Array<{
-    source: string;
-    titleId: string;
-    url: string;
-  }>;
-  resultsCount?: number;
-  total?: number;
-  isValidPage?: boolean;
-  googleUrl?: string;
-  pageInfo?: {
-    hasTitle: boolean;
-    hasSynopsis: boolean;
-    hasCover: boolean;
-    hasInfo: boolean;
-    hasChapters: boolean;
-    title: string | null;
-  };
-  elements?: {
-    hasTitle: boolean;
-    hasSynopsis: boolean;
-    hasCover: boolean;
-    hasInfo: boolean;
-    hasChapters: boolean;
-    title: string | null;
-  };
-  formattedTitle?: string;
-  pageStatus?: {
-    hasValidContent: boolean;
-    errors: Record<string, boolean>;
-  };
-  proxyInfo?: {
-    ip: string;
-    country: string;
-    status: string;
-  };
-}
-
-// Fonction pour obtenir un proxy aléatoire
-async function getRandomProxy(): Promise<string | null> {
-  try {
-    // Liste de proxies gratuits (à remplacer par des proxies payants pour la production)
-    const proxyList = [
-      'fr1.proxy.example.com:8080',
-      'fr2.proxy.example.com:8080',
-      'fr3.proxy.example.com:8080'
-    ];
-    
-    return proxyList[Math.floor(Math.random() * proxyList.length)];
-  } catch (error) {
-    logger.log('error', 'Erreur lors de la récupération du proxy', {
-      error: error instanceof Error ? error.message : 'Erreur inconnue'
-    });
-    return null;
-  }
-}
-
-// Fonction pour configurer le navigateur avec un proxy
-async function setupBrowserWithProxy() {
-  const proxy = await getRandomProxy();
-  if (!proxy) {
-    return setupBrowser();
-  }
-
-  const browser = await puppeteer.launch({
-    headless: false,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-accelerated-2d-canvas',
-      '--disable-gpu',
-      '--window-size=1920x1080',
-      '--disable-web-security',
-      '--disable-features=IsolateOrigins,site-per-process',
-      '--disable-blink-features=AutomationControlled',
-      `--proxy-server=${proxy}`
-    ],
-    defaultViewport: null
-  });
-
-  const page = await browser.newPage();
-  
-  // Configuration anti-détection
-  await page.evaluateOnNewDocument(() => {
-    delete Object.getPrototypeOf(navigator).webdriver;
-    // @ts-ignore
-    window.navigator.chrome = {
-      runtime: {},
-    };
-    Object.defineProperty(navigator, 'languages', {
-      get: () => ['fr-FR', 'fr', 'en-US', 'en'],
-    });
-    Object.defineProperty(navigator, 'plugins', {
-      get: () => [
-        {
-          0: {type: "application/x-google-chrome-pdf"},
-          description: "Portable Document Format",
-          filename: "internal-pdf-viewer",
-          length: 1,
-          name: "Chrome PDF Plugin"
-        }
-      ],
-    });
-  });
-
-  // Configuration des en-têtes
-  await page.setExtraHTTPHeaders({
-    'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Connection': 'keep-alive',
-    'Cache-Control': 'max-age=0',
-    'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-    'sec-ch-ua-mobile': '?0',
-    'sec-ch-ua-platform': '"Windows"',
-    'Upgrade-Insecure-Requests': '1',
-    'Sec-Fetch-Site': 'none',
-    'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-User': '?1',
-    'Sec-Fetch-Dest': 'document'
-  });
-
-  await page.setViewport({ width: 1920, height: 1080 });
-
-  // Vérifier le proxy
-  try {
-    await page.goto('https://api.myip.com', { waitUntil: 'networkidle0' });
-    const proxyInfo = await page.evaluate(() => {
-      return JSON.parse(document.body.textContent || '{}');
-    });
-    
-    logger.log('info', 'Proxy configuré avec succès', {
-      proxyInfo
-    });
-  } catch (error) {
-    logger.log('warning', 'Erreur lors de la vérification du proxy', {
-      error: error instanceof Error ? error.message : 'Erreur inconnue'
-    });
-  }
 
   return { browser, page };
 }
@@ -430,127 +238,7 @@ async function bypassBlocker(page: Page, url: string, maxRetries = 3): Promise<b
   return false;
 }
 
-// Fonction pour rechercher directement sur Google
-async function verifyMangaPage(page: Page): Promise<boolean> {
-  try {
-    // Capturer le HTML pour le débogage
-    const html = await page.content();
-    logger.log('debug', 'Contenu HTML de la page', {
-      url: page.url(),
-      html: html.substring(0, 500) // Limiter la taille du log
-    });
 
-    // Vérifier si la page existe et contient du contenu manga valide
-    const pageInfo = await page.evaluate(() => {
-      // Sélecteurs spécifiques à manga-scantrad.io
-      const selectors = {
-        title: '.entry-title, .manga-title, .series-title, h1.title',
-        synopsis: '.entry-content, .synopsis, .description, .manga-description',
-        cover: '.manga-cover img, .cover img, .manga-featured-image img',
-        info: '.manga-info, .series-info, .manga-details',
-        chapters: '.chapters-list, .chapter-list, .manga-chapters'
-      };
-
-      const elements = {
-        title: document.querySelector(selectors.title)?.textContent?.trim() || null,
-        synopsis: document.querySelector(selectors.synopsis)?.textContent?.trim(),
-        cover: document.querySelector(selectors.cover)?.getAttribute('src'),
-        info: document.querySelector(selectors.info)?.textContent?.trim(),
-        chapters: document.querySelector(selectors.chapters)
-      };
-
-      return {
-        hasTitle: !!elements.title,
-        hasSynopsis: !!elements.synopsis,
-        hasCover: !!elements.cover,
-        hasInfo: !!elements.info,
-        hasChapters: !!elements.chapters,
-        title: elements.title
-      };
-    });
-
-    logger.log('debug', 'Éléments de la page manga', {
-      url: page.url(),
-      pageInfo
-    });
-
-    // Une page est considérée valide si elle a au moins le titre et un autre élément
-    const isValid = pageInfo.hasTitle && (
-      pageInfo.hasSynopsis || 
-      pageInfo.hasCover || 
-      pageInfo.hasInfo ||
-      pageInfo.hasChapters
-    );
-
-    logger.log('debug', 'Vérification de la page manga', {
-      isValidPage: isValid,
-      url: page.url(),
-      elements: pageInfo
-    });
-
-    return isValid;
-  } catch (error) {
-    logger.log('error', 'Erreur lors de la vérification de la page', {
-      error: error instanceof Error ? error.message : 'Erreur inconnue',
-      url: page.url()
-    });
-    return false;
-  }
-}
-
-async function searchMangaOnGoogle(page: Page, title: string): Promise<string | null> {
-  try {
-    const searchQuery = `site:manga-scantrad.io "${title}" manga`;
-    const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
-    
-    logger.log('debug', 'Recherche Google', {
-      searchQuery,
-      googleUrl
-    });
-
-    await page.goto(googleUrl, { waitUntil: 'networkidle0' });
-    await sleep(2000);
-
-    const mangaUrls = await page.evaluate(() => {
-      const results = Array.from(document.querySelectorAll('a'));
-      // Filtrer pour trouver les liens qui correspondent au format attendu
-      return results
-        .filter(a => {
-          const href = a.href || '';
-          return href.includes('manga-scantrad.io/manga/') && 
-                 !href.includes('search') &&
-                 !href.includes('ch-') &&
-                 !href.includes('chapitre-') &&
-                 !href.includes('-dj-') &&  // Exclure les doujins
-                 !href.includes('-etc');     // Exclure les contenus annexes
-        })
-        .map(a => a.href);
-    });
-
-    // Tester chaque URL trouvée
-    for (const url of mangaUrls) {
-      logger.log('debug', 'Test d\'URL trouvée', { url });
-      
-      const response = await page.goto(url, { 
-        waitUntil: 'networkidle0',
-        timeout: 10000
-      });
-
-      if (response?.ok() && await verifyMangaPage(page)) {
-        logger.log('info', 'Page manga valide trouvée', { url });
-        return url;
-      }
-    }
-
-    return null;
-  } catch (error) {
-    logger.log('error', 'Erreur lors de la recherche Google', {
-      error: error instanceof Error ? error.message : 'Erreur inconnue',
-      stack: error instanceof Error ? error.stack : undefined
-    });
-    return null;
-  }
-}
 
 // Source Webtoon
 const webtoonSource: Source = {
@@ -716,63 +404,6 @@ const webtoonSource: Source = {
   }
 };
 
-// Fonction pour générer les variantes de titre
-function generateTitleVariants(title: string): string[] {
-  const variants = new Set<string>();
-  
-  // Titre original
-  variants.add(title);
-
-  // Version en minuscules
-  const lowerTitle = title.toLowerCase();
-  variants.add(lowerTitle);
-
-  // Remplacer "boku no" par "my" (cas courant en manga)
-  if (lowerTitle.includes('boku no')) {
-    const myVersion = lowerTitle.replace('boku no', 'my');
-    variants.add(myVersion);
-    // Ajouter la version avec tirets (format URL courant)
-    variants.add(myVersion.replace(/\s+/g, '-'));
-  }
-
-  // Gérer les variantes avec/sans espaces et tirets
-  const noSpaceTitle = lowerTitle.replace(/\s+/g, '');
-  variants.add(noSpaceTitle);
-  
-  // Version avec tirets (format le plus courant pour les URLs)
-  const dashedTitle = lowerTitle.replace(/\s+/g, '-');
-  variants.add(dashedTitle);
-
-  // Version avec tirets après remplacement de "boku no"
-  if (lowerTitle.includes('boku no')) {
-    variants.add(lowerTitle.replace('boku no', 'my').replace(/\s+/g, '-'));
-  }
-
-  // Supprimer les caractères spéciaux et créer des variantes
-  const cleanTitle = lowerTitle.replace(/[^a-z0-9\s]/g, ' ').trim();
-  variants.add(cleanTitle);
-  variants.add(cleanTitle.replace(/\s+/g, '-'));
-
-  // Gérer les abréviations courantes
-  if (lowerTitle.includes('academia')) {
-    const acVersion = lowerTitle.replace('academia', 'ac');
-    variants.add(acVersion);
-    variants.add(acVersion.replace(/\s+/g, '-'));
-  }
-
-  // Gérer spécifiquement le cas de "hero academia"
-  if (lowerTitle.includes('hero') && lowerTitle.includes('academia')) {
-    variants.add('my-hero-academia');
-    variants.add('mha');
-  }
-
-  logger.log('debug', 'Variantes générées', {
-    original: title,
-    variants: Array.from(variants)
-  });
-
-  return Array.from(variants);
-}
 
 // Source MangaScantrad
 const mangaScantradSource: Source = {
@@ -1014,7 +645,7 @@ const mangadexSource: Source = {
   },
   getChapters: async (titleId: string, url: string) => {
     try {
-      logger.log('info', 'Récupération des chapitres depuis MangaDex', { titleId });
+      logger.log('info', 'Récupération des chapitres depuis MangaDex', { titleId, url });
 
       // Récupérer les chapitres avec pagination
       const chaptersUrl = `${mangadexSource.baseUrl}/manga/${titleId}/feed?translatedLanguage[]=fr&translatedLanguage[]=en&order[chapter]=desc&limit=500`;

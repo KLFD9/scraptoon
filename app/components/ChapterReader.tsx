@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useInView } from 'react-intersection-observer';
 
 interface ChapterReaderProps {
@@ -22,7 +22,7 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const loadedImagesRef = useRef<Set<number>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
-  const [ref, inView] = useInView({
+  const [ref] = useInView({
     threshold: 0.5,
     triggerOnce: false
   });
