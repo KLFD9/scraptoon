@@ -317,7 +317,6 @@ export async function GET(
   { params }: { params: { id: string; chapterId: string } }
 ): Promise<NextResponse> {
   try {
-  try {
     const { id: mangaId, chapterId } = params;
     if (!mangaId || !chapterId) {
       throw new Error('ID de manga ou de chapitre manquant');
