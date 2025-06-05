@@ -84,10 +84,13 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({
                 alt={`Page ${index + 1}`}
                 width={800}
                 height={1200}
-                className={`max-w-full h-auto ${loadedImagesRef.current.has(index) ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+                className={`max-w-full h-auto ${
+                  loadedImagesRef.current.has(index) ? 'opacity-100' : 'opacity-0'
+                } transition-opacity duration-300`}
                 loading="lazy"
                 onLoad={() => handleImageLoad(index)}
                 loader={({ src }) => src}
+                style={{ width: '100%', height: 'auto' }}
               />
               {!loadedImagesRef.current.has(index) && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
