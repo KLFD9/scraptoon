@@ -183,7 +183,6 @@ const SCRAPING_CONFIGS: Record<string, ScrapingConfig[]> = {
 };
 
 async function scrapeImages(page: Page, config: ScrapingConfig): Promise<string[]> {
-  const images = new Map<string, string>();
   console.log(`📝 Début du scraping avec la configuration ${config.name}`);
 
   try {
@@ -197,7 +196,7 @@ async function scrapeImages(page: Page, config: ScrapingConfig): Promise<string[
         console.log(`✅ Conteneur trouvé avec le sélecteur: ${selector}`);
         containerFound = true;
         break;
-      } catch (e) {
+      } catch {
         console.log(`⚠️ Sélecteur ${selector} non trouvé, essai suivant...`);
       }
     }
@@ -230,7 +229,7 @@ async function scrapeImages(page: Page, config: ScrapingConfig): Promise<string[
     // Méthode de scraping adaptée
     if (config.name.includes('webtoons')) {
       console.log('🔄 Scraping spécialisé pour Webtoons');
-      return await scrapeWebtoons(page, config);
+      return await scrapeWebtoons(page);
     } else {
       console.log('🔄 Scraping générique');
       return await scrapeGeneric(page, config);
@@ -242,7 +241,7 @@ async function scrapeImages(page: Page, config: ScrapingConfig): Promise<string[
   }
 }
 
-async function scrapeWebtoons(page: Page, config: ScrapingConfig): Promise<string[]> {
+async function scrapeWebtoons(page: Page): Promise<string[]> {
   const images = new Set<string>();
   
   try {
@@ -356,8 +355,8 @@ async function scrapeGeneric(page: Page, config: ScrapingConfig): Promise<string
                 urls.add(dataSrc);
               }
             });
-          } catch (e) {
-            console.log(`Erreur avec le sélecteur ${selector}:`, e);
+          } catch (error) {
+            console.log(`Erreur avec le sélecteur ${selector}:`, error);
           }
         });
         

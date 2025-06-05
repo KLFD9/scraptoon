@@ -1,6 +1,6 @@
-import puppeteer, { Page } from 'puppeteer';
+import puppeteer from 'puppeteer';
 
-interface DiagnosticResult {
+export interface DiagnosticResult {
   url: string;
   success: boolean;
   elements: {
@@ -81,12 +81,17 @@ export async function diagnoseScrapingSelectors(
     for (const selector of testSelectors.images) {
       try {
         const elements = await page.$$(selector);
-        const sources = elements.length > 0 ? await page.evaluate(
-          (sel) => Array.from(document.querySelectorAll(sel)).map((img: any) => 
-            img.src || img.dataset?.url || img.dataset?.src || 'no-source'
-          ).slice(0, 5),
-          selector
-        ) : [];
+        const sources = elements.length > 0
+          ? await page.evaluate(
+              (sel) =>
+                Array.from(
+                  document.querySelectorAll<HTMLImageElement>(sel)
+                )
+                  .map(img => img.src || img.dataset?.url || img.dataset?.src || 'no-source')
+                  .slice(0, 5),
+              selector
+            )
+          : [];
 
         result.elements.images.push({
           selector,
@@ -116,7 +121,7 @@ export async function diagnoseScrapingSelectors(
 
     // Analyse de la structure DOM
     const domAnalysis = await page.evaluate(() => {
-      const analysis: any = {};
+      const analysis: Record<string, unknown> = {};
       
       // Classes et IDs communs
       const commonClasses = ['img', 'image', 'page', 'chapter', 'reader', 'viewer', 'content'];
