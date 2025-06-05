@@ -14,7 +14,6 @@ export default function SynopsisContent({ content }: SynopsisContentProps) {
   const extractContent = (text: string) => {
     // Séparer le court synopsis du reste
     const parts = text.split('---').map(part => part.trim());
-    const shortSynopsis = parts[0];
     const fullSynopsis = parts.slice(1).join('\n\n');
 
     // Extraire les trailers
@@ -28,13 +27,12 @@ export default function SynopsisContent({ content }: SynopsisContentProps) {
     }).trim();
 
     return {
-      shortSynopsis,
       fullSynopsis: cleanText,
       trailers
     };
   };
 
-  const { shortSynopsis, fullSynopsis, trailers } = extractContent(content);
+  const { fullSynopsis, trailers } = extractContent(content);
 
   return (
     <div className="space-y-6">

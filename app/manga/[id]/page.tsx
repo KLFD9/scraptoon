@@ -5,12 +5,11 @@ import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Manga } from '@/app/types/manga';
 import Image from 'next/image';
-import { BookOpen, Calendar, Clock, Globe, Heart, Info, Star, Users, ArrowLeft, BookmarkPlus, Play, Share2, QrCode, Bookmark } from 'lucide-react';
+import { BookOpen, Star, Users, ArrowLeft, BookmarkPlus, Play, Share2, QrCode, Bookmark } from 'lucide-react';
 import { useFavorites } from '@/app/hooks/useFavorites';
 import Layout from '@/app/components/Layout';
-import SynopsisContent, { extractShortSynopsis } from '@/app/components/SynopsisContent';
+import { extractShortSynopsis } from '@/app/components/SynopsisContent';
 import ChaptersList from '@/app/components/ChaptersList';
-import Link from 'next/link';
 
 const DEFAULT_COVER = '/images/default-cover.jpg';
 
@@ -23,8 +22,6 @@ function MangaContent() {
   const [error, setError] = useState<string | null>(null);
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
   const [isInFavorites, setIsInFavorites] = useState(false);
-  const [activeTrailer, setActiveTrailer] = useState<string | null>(null);
-  const [trailers, setTrailers] = useState<{ url: string; label: string }[]>([]);
 
   useEffect(() => {
     const fetchMangaDetails = async () => {
@@ -49,7 +46,6 @@ function MangaContent() {
 
         setManga(data);
         setIsInFavorites(isFavorite(mangaId));
-        setTrailers(data.trailers || []);
       } catch (error) {
         setError(error instanceof Error ? error.message : 'Une erreur est survenue');
         setManga(null);
@@ -89,7 +85,7 @@ function MangaContent() {
         await navigator.clipboard.writeText(window.location.href);
         // Afficher une notification de succès si nécessaire
       }
-    } catch (error) {
+    } catch {
       // Ignorer les erreurs de partage (souvent dues à l'annulation par l'utilisateur)
     }
   };
