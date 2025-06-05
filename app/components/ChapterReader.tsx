@@ -15,6 +15,7 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({ pages, title, chapter, ma
   const [currentPage, setCurrentPage] = useState(1)
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set())
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set())
+  const totalPages = pages.length
   const containerRef = useRef<HTMLDivElement>(null)
 
   const handlePageChange = useCallback((page: number) => {
@@ -61,7 +62,18 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({ pages, title, chapter, ma
           <h1 className="text-xl font-bold">{mangaTitle}</h1>
           <div className="flex justify-between items-center mt-2">
             <p className="text-sm">Chapitre {chapter}{title && ` - ${title}`}</p>
-            <p className="text-sm">Page {currentPage}/{pages.length}</p>
+            <p className="text-sm">Page {currentPage}/{totalPages}</p>
+          </div>
+          <div className="mt-2">
+            <div className="w-full bg-gray-700 rounded-full h-2">
+              <div
+                className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${(loadedImages.size / totalPages) * 100}%` }}
+              />
+            </div>
+            <p className="text-xs text-right mt-1">
+              {loadedImages.size}/{totalPages} pages chargées
+            </p>
           </div>
         </div>
       </div>
