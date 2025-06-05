@@ -5,7 +5,7 @@ import { Cache } from '@/app/utils/cache';
 import { logger } from '@/app/utils/logger';
 
 // Cache pour les chapitres (2 heures)
-const chaptersCache = new Cache(7200000);
+const chaptersCache = new Cache<ChaptersResult>(7200000);
 
 // Types pour les résultats de recherche
 interface SearchResult {
@@ -26,6 +26,11 @@ interface ChapterData {
 interface ChaptersResult {
   chapters: ChapterData[];
   totalChapters: number;
+  source: {
+    name: string;
+    url: string;
+    titleId: string;
+  };
 }
 
 
@@ -135,21 +140,25 @@ interface LogData {
   chaptersCount?: number;
   status?: number;
   statusText?: string;
-  response?: any;
+  response?: unknown;
   title?: string;
   titles?: string[];
   availableLanguages?: string[];
   source?: string;
   titleId?: string;
   totalChapters?: number;
-  firstChapter?: any;
-  lastChapter?: any;
+  firstChapter?: ChapterData;
+  lastChapter?: ChapterData;
   cacheKey?: string;
   executionTime?: number;
   maxRetries?: number;
   delay?: number;
-  blockStatus?: any;
-  params?: any;
+  blockStatus?: {
+    isBlocked: boolean;
+    hasValidContent: boolean;
+    indicators: Record<string, boolean>;
+  };
+  params?: Record<string, unknown>;
   variants?: string[];
   original?: string;
   totalPages?: number;
