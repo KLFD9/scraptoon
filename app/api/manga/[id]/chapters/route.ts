@@ -5,6 +5,7 @@ import { Cache } from '@/app/utils/cache';
 import { logger } from '@/app/utils/logger';
 
 // Cache pour les chapitres (2 heures)
+const chaptersCache = new Cache(7200000);
 const chaptersCache = new Cache<ChaptersResult>(7200000);
 
 interface ChapterData {
@@ -39,17 +40,7 @@ interface Source {
   name: string;
   baseUrl: string;
   search: (title: string) => Promise<{ titleId: string | null; url: string | null }>;
-  getChapters: (titleId: string, url: string) => Promise<{
-    chapters: Array<{
-      id: string;
-      chapter: string;
-      title: string | null;
-      publishedAt: string | null;
-      url: string;
-      source: string;
-    }>;
-    totalChapters: number;
-  }>;
+  getChapters: (titleId: string, url: string) => Promise<ChaptersResult>;
 }
 
 // Configuration du navigateur de base
@@ -116,6 +107,7 @@ async function setupBrowser() {
 
   return { browser, page };
 }
+
 
 // Mise à jour de l'interface LogData
 interface LogData {
@@ -193,6 +185,7 @@ interface LogData {
     status: string;
   };
 }
+
 
 // Fonction pour obtenir un proxy aléatoire
 async function getRandomProxy(): Promise<string | null> {
@@ -507,7 +500,7 @@ const webtoonSource: Source = {
       return { titleId: null, url: null };
     }
   },
-  getChapters: async (titleId: string, url: string) => {
+  getChapters: async (titleId: string, url: string): Promise<ChaptersResult> => {
     try {
       const browser = await puppeteer.launch({
         headless: true,
@@ -687,7 +680,7 @@ const mangaScantradSource: Source = {
       await browser.close();
     }
   },
-  getChapters: async (titleId: string, url: string) => {
+  getChapters: async (titleId: string, url: string): Promise<ChaptersResult> => {
     const { browser, page } = await setupBrowser();
     
     try {
@@ -837,7 +830,7 @@ const mangadexSource: Source = {
       return { titleId: null, url: null };
     }
   },
-  getChapters: async (titleId: string, url: string) => {
+  getChapters: async (titleId: string, url: string): Promise<ChaptersResult> => {
     try {
       logger.log('info', 'Récupération des chapitres depuis MangaDex', { titleId, url });
 
