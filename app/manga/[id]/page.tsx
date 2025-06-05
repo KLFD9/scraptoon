@@ -20,6 +20,7 @@ function MangaContent() {
   const [manga, setManga] = useState<Manga | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [firstChapterId, setFirstChapterId] = useState<string | null>(null);
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
   const [isInFavorites, setIsInFavorites] = useState(false);
 
@@ -46,6 +47,17 @@ function MangaContent() {
 
         setManga(data);
         setIsInFavorites(isFavorite(mangaId));
+        
+        // Récupérer le premier chapitre pour le bouton "Commencer la lecture"
+        try {
+          const chaptersResponse = await fetch(`/api/manga/${mangaId}/chapters?page=1`);
+          const chaptersData = await chaptersResponse.json();
+          if (chaptersResponse.ok && chaptersData.chapters && chaptersData.chapters.length > 0) {
+            setFirstChapterId(chaptersData.chapters[0].id);
+          }
+        } catch (error) {
+          console.error('Erreur lors de la récupération des chapitres:', error);
+        }
       } catch (error) {
         setError(error instanceof Error ? error.message : 'Une erreur est survenue');
         setManga(null);
@@ -60,6 +72,8 @@ function MangaContent() {
   }, [mangaId]);
 
   const handleFavoriteClick = () => {
+    if (!manga) return;
+    
     try {
       if (isInFavorites) {
         removeFromFavorites(manga.id);
@@ -74,6 +88,8 @@ function MangaContent() {
   };
 
   const handleShare = async () => {
+    if (!manga) return;
+    
     try {
       if (navigator.share) {
         await navigator.share({
@@ -272,7 +288,7 @@ function MangaContent() {
             <div className="lg:col-span-2 space-y-4 sm:space-y-6">
               {/* Liste des chapitres */}
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
-                <ChaptersList mangaId={params.id} />
+                <ChaptersList mangaId={mangaId} />
               </div>
             </div>
 
@@ -346,42 +362,59 @@ function MangaContent() {
                   {/* Bouton de lecture */}
                   <div className="p-4">
                     <button
-                      className="w-full py-2.5 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2"
-                      onClick={() => {/* TODO: Implémenter la fonction de lecture */}}
+                      className="w-full py-2.5 px-4 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => {
+                        if (firstChapterId) {
+                          router.push(`/manga/${mangaId}/chapter/${firstChapterId}`);
+                        }
+                      }}
+                      disabled={!firstChapterId}
                     >
                       <Play className="w-4 h-4" />
-                      Commencer la lecture
+                      {firstChapterId ? 'Commencer la lecture' : 'Chapitres non disponibles'}
                     </button>
                   </div>
 
                   {/* Catégories en format compact */}
-                  {manga.genres && manga.genres.length > 0 && (
-                    <div className="p-4">
-                      <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
-                        Catégories
-                      </h3>
-                      <div className="flex flex-wrap gap-1.5">
-                        {manga.genres.map((genre, index) => (
-                          <span
-                            key={index}
-                            className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded-full text-xs text-gray-600 dark:text-gray-300"
-                          >
-                            {genre}
-                          </span>
-                        ))}
+                  <div className="p-4">
+                    <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                      Informations
+                    </h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Type :</span>
+                        <span className="font-medium">{manga.type.toUpperCase()}</span>
                       </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Statut :</span>
+                        <span className="font-medium">
+                          {manga.status === 'ongoing' ? 'En cours' : 'Terminé'}
+                        </span>
+                      </div>
+                      {manga.author && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">Auteur :</span>
+                          <span className="font-medium">{manga.author}</span>
+                        </div>
+                      )}
+                      {manga.year && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">Année :</span>
+                          <span className="font-medium">{manga.year}</span>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
 
-              {/* Bande annonce - uniquement si disponible */}
-              {manga.videoUrl && (
+              {/* Bande annonce - uniquement si disponible (future fonctionnalité) */}
+              {false && (
                 <div className="bg-white dark:bg-gray-800 rounded-xl overflow-hidden shadow-lg w-72">
                   <div className="relative pt-[56.25%]">
                     <iframe
                       className="absolute inset-0 w-full h-full"
-                      src={manga.videoUrl.replace('watch?v=', 'embed/')}
+                      src=""
                       title="Bande annonce"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                       allowFullScreen
