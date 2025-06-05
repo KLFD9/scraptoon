@@ -1130,7 +1130,7 @@ export async function GET(
 
     // Vérifier le cache
     const cacheKey = `chapters_${mangaId}`;
-    const cachedData = chaptersCache.get(cacheKey);
+    const cachedData = await chaptersCache.get(cacheKey);
     
     if (cachedData) {
       logger.log('info', 'Données trouvées en cache', {
@@ -1230,7 +1230,7 @@ export async function GET(
       }
     };
     
-    chaptersCache.set(cacheKey, resultData);
+    await chaptersCache.set(cacheKey, resultData);
     logger.log('debug', 'Données mises en cache', {
       mangaId,
       cacheKey
