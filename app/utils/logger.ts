@@ -1,5 +1,14 @@
 type LogLevel = 'info' | 'warning' | 'error' | 'debug';
 
+export interface ChapterInfo {
+  id: string;
+  chapter: string;
+  title: string | null;
+  publishedAt: string | null;
+  url: string;
+  source: string;
+}
+
 export interface LogData {
   error?: string;
   stack?: string;
@@ -15,15 +24,15 @@ export interface LogData {
   chaptersCount?: number;
   status?: number;
   statusText?: string;
-  response?: any;
+  response?: unknown;
   title?: string;
   titles?: string[];
   availableLanguages?: string[];
   source?: string;
   titleId?: string;
   totalChapters?: number;
-  firstChapter?: any;
-  lastChapter?: any;
+  firstChapter?: ChapterInfo;
+  lastChapter?: ChapterInfo;
   cacheKey?: string;
   executionTime?: number;
   maxRetries?: number;
@@ -33,7 +42,9 @@ export interface LogData {
     hasValidContent: boolean;
     indicators: Record<string, boolean>;
   };
+
   params?: any;
+  params?: Record<string, unknown>;
   variants?: string[];
   original?: string;
   totalPages?: number;
@@ -47,24 +58,6 @@ export interface LogData {
   resultsCount?: number;
   total?: number;
   isValidPage?: boolean;
-  googleUrl?: string;
-  pageInfo?: {
-    hasTitle: boolean;
-    hasSynopsis: boolean;
-    hasCover: boolean;
-    hasInfo: boolean;
-    hasChapters: boolean;
-    title: string | null;
-  };
-  elements?: {
-    hasTitle: boolean;
-    hasSynopsis: boolean;
-    hasCover: boolean;
-    hasInfo: boolean;
-    hasChapters: boolean;
-    title: string | null;
-  };
-  formattedTitle?: string;
   pageStatus?: {
     hasValidContent: boolean;
     errors: Record<string, boolean>;
