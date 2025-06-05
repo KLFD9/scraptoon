@@ -13,9 +13,6 @@ interface ChaptersCacheData extends ChaptersResult {
   source: SourceInfo;
 }
 
-// Cache pour les chapitres (2 heures)
-const chaptersCache = new Cache<ChaptersCacheData>(7200000);
-
 // Types pour les résultats de recherche
 interface SearchResult {
   titleId: string;
@@ -23,8 +20,8 @@ interface SearchResult {
   score: number;
 }
 
-const chaptersCache = new Cache(7200000);
-const chaptersCache = new Cache<ChaptersResult>(7200000);
+// Cache pour les chapitres (2 heures)
+const chaptersCache = new Cache<ChaptersCacheData>(7200000);
 
 
 interface ChapterData {
@@ -162,9 +159,7 @@ interface LogData {
   cacheKey?: string;
   executionTime?: number;
   maxRetries?: number;
-  delay?: number
-  blockStatus?: any;
-  params?: any;
+  delay?: number;
   blockStatus?: {
     isBlocked: boolean;
     hasValidContent: boolean;
@@ -173,6 +168,7 @@ interface LogData {
   params?: Record<string, unknown>;
   variants?: string[];
   original?: string;
+  formattedTitle?: string;
 
   totalPages?: number;
   count?: number;
@@ -589,7 +585,12 @@ const webtoonSource: Source = {
 
       return {
         chapters: allChapters.reverse(),
-        totalChapters: allChapters.length
+        totalChapters: allChapters.length,
+        source: {
+          name: 'webtoons',
+          url: listUrl,
+          titleId: titleId
+        }
       };
 
     } catch (error) {
@@ -620,7 +621,6 @@ const mangaScantradSource: Source = {
       const directUrl = `${mangaScantradSource.baseUrl}/manga/${formattedTitle}`;
       logger.log('info', 'Tentative d\'accès direct', { 
         title,
-        formattedTitle,
         url: directUrl 
       });
 
@@ -788,7 +788,12 @@ const mangaScantradSource: Source = {
 
       return {
         chapters: chapters.reverse(), // Du plus récent au plus ancien
-        totalChapters: chapters.length
+        totalChapters: chapters.length,
+        source: {
+          name: 'mangascantrad',
+          url: url,
+          titleId: titleId
+        }
       };
 
     } catch (error) {
@@ -871,7 +876,12 @@ const mangadexSource: Source = {
 
       return {
         chapters,
-        totalChapters: chapters.length
+        totalChapters: chapters.length,
+        source: {
+          name: 'mangadx',
+          url: url,
+          titleId: titleId
+        }
       };
 
     } catch (error) {

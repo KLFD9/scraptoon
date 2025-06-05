@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useInView } from 'react-intersection-observer';
 import Image from 'next/image';
 
@@ -12,6 +12,11 @@ interface ChapterReaderProps {
   onPageChange?: (page: number) => void;
 }
 
+interface ImageDimensions {
+  width: number;
+  height: number;
+}
+
 const ChapterReader: React.FC<ChapterReaderProps> = ({ 
   pages, 
   title, 
@@ -21,7 +26,9 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({
 }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
-  const loadedImagesRef = useRef<Set<number>>(new Set());
+  const [imageDimensions, setImageDimensions] = useState<Map<number, ImageDimensions>>(new Map());
+  const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
+  const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
   const [ref] = useInView({
     threshold: 0.5,
@@ -36,13 +43,50 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({
     }
   }, [currentPage, onPageChange]);
 
-  // Gérer le chargement des images
-  const handleImageLoad = useCallback((index: number) => {
-    loadedImagesRef.current.add(index);
-    if (loadedImagesRef.current.size === pages.length) {
+  // Précharger les dimensions des images
+  useEffect(() => {
+    const loadImageDimensions = async () => {
+      const promises = pages.map((url, index) => {
+        return new Promise<void>((resolve) => {
+          const img = new window.Image();
+          img.onload = () => {
+            setImageDimensions(prev => new Map(prev.set(index, {
+              width: img.naturalWidth,
+              height: img.naturalHeight
+            })));
+            resolve();
+          };
+          img.onerror = () => {
+            // Dimensions par défaut en cas d'erreur
+            setImageDimensions(prev => new Map(prev.set(index, {
+              width: 800,
+              height: 1200
+            })));
+            setImageErrors(prev => new Set(prev.add(index)));
+            resolve();
+          };
+          img.src = url;
+        });
+      });
+
+      await Promise.all(promises);
       setIsLoading(false);
-    }
-  }, [pages.length]);
+    };
+
+    loadImageDimensions();
+  }, [pages]);
+
+  // Gérer le chargement des images Next.js
+  const handleImageLoad = useCallback((index: number) => {
+    setLoadedImages(prev => new Set(prev.add(index)));
+  }, []);
+
+  // Gérer les erreurs d'images Next.js
+  const handleImageError = useCallback((index: number) => {
+    console.error(`Erreur de chargement de l'image ${index + 1}`);
+    setImageErrors(prev => new Set(prev.add(index)));
+    setLoadedImages(prev => new Set(prev.add(index))); // Marquer comme "chargée" pour éviter le blocage
+  }, []);
 
   return (
     <div className="relative min-h-screen bg-gray-900">
@@ -96,11 +140,69 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-800">
                   <div className="animate-pulse text-gray-400">
                     Chargement...
+          {pages.map((url, index) => {
+            const dimensions = imageDimensions.get(index);
+            const isLoaded = loadedImages.has(index);
+            const hasError = imageErrors.has(index);
+            
+            return (
+              <div
+                key={url}
+                ref={index === currentPage - 1 ? ref : undefined}
+                className="relative flex justify-center"
+                onMouseEnter={() => handlePageChange(index + 1)}
+              >
+                {dimensions && (
+                  <div className="relative w-full flex justify-center">
+                    {hasError ? (
+                      <div className="bg-gray-800 text-white p-8 text-center rounded-lg">
+                        <p>Erreur de chargement de l'image {index + 1}</p>
+                        <p className="text-sm text-gray-400 mt-2">URL: {url}</p>
+                      </div>
+                    ) : (
+                      <div className="relative flex justify-center w-full">
+                        <Image
+                          src={url}
+                          alt={`Page ${index + 1}`}
+                          width={dimensions.width}
+                          height={dimensions.height}
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 60vw"
+                          style={{ 
+                            width: 'auto', 
+                            height: 'auto',
+                            maxWidth: '100%',
+                            maxHeight: 'none'
+                          }}
+                          className={`${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-300`}
+                          loading="lazy"
+                          onLoad={() => handleImageLoad(index)}
+                          onError={() => handleImageError(index)}
+                          unoptimized
+                          priority={index < 3} // Priorité pour les 3 premières images
+                        />
+                      </div>
+                    )}
+                    
+                    {!isLoaded && !hasError && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-gray-800 rounded-lg">
+                        <div className="animate-pulse text-gray-400 text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                          <p>Chargement page {index + 1}...</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
-            </div>
-          ))}
+                )}
+                
+                {!dimensions && !isLoading && (
+                  <div className="bg-gray-800 text-white p-8 text-center rounded-lg">
+                    <p>Chargement des dimensions...</p>
+
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
