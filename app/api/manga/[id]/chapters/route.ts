@@ -7,13 +7,6 @@ import { logger } from '@/app/utils/logger';
 // Cache pour les chapitres (2 heures)
 const chaptersCache = new Cache(7200000);
 
-// Types pour les résultats de recherche
-interface SearchResult {
-  titleId: string;
-  url: string;
-  score: number;
-}
-
 interface ChapterData {
   id: string;
   chapter: string;
@@ -41,17 +34,7 @@ interface Source {
   name: string;
   baseUrl: string;
   search: (title: string) => Promise<{ titleId: string | null; url: string | null }>;
-  getChapters: (titleId: string, url: string) => Promise<{
-    chapters: Array<{
-      id: string;
-      chapter: string;
-      title: string | null;
-      publishedAt: string | null;
-      url: string;
-      source: string;
-    }>;
-    totalChapters: number;
-  }>;
+  getChapters: (titleId: string, url: string) => Promise<ChaptersResult>;
 }
 
 // Configuration du navigateur de base
@@ -119,78 +102,6 @@ async function setupBrowser() {
   return { browser, page };
 }
 
-// Mise à jour de l'interface LogData
-interface LogData {
-  error?: string;
-  stack?: string;
-  attempt?: number;
-  url?: string;
-  mangaId?: string;
-  query?: string;
-  searchQuery?: string;
-  html?: string;
-  timestamp?: string;
-  page?: number;
-  limit?: number;
-  chaptersCount?: number;
-  status?: number;
-  statusText?: string;
-  response?: any;
-  title?: string;
-  titles?: string[];
-  availableLanguages?: string[];
-  source?: string;
-  titleId?: string;
-  totalChapters?: number;
-  firstChapter?: any;
-  lastChapter?: any;
-  cacheKey?: string;
-  executionTime?: number;
-  maxRetries?: number;
-  delay?: number;
-  blockStatus?: any;
-  params?: any;
-  variants?: string[];
-  original?: string;
-  totalPages?: number;
-  count?: number;
-  variant?: string;
-  sourceResults?: Array<{
-    source: string;
-    titleId: string;
-    url: string;
-  }>;
-  resultsCount?: number;
-  total?: number;
-  isValidPage?: boolean;
-  googleUrl?: string;
-  pageInfo?: {
-    hasTitle: boolean;
-    hasSynopsis: boolean;
-    hasCover: boolean;
-    hasInfo: boolean;
-    hasChapters: boolean;
-    title: string | null;
-  };
-  elements?: {
-    hasTitle: boolean;
-    hasSynopsis: boolean;
-    hasCover: boolean;
-    hasInfo: boolean;
-    hasChapters: boolean;
-    title: string | null;
-  };
-  formattedTitle?: string;
-  pageStatus?: {
-    hasValidContent: boolean;
-    errors: Record<string, boolean>;
-  };
-  proxyInfo?: {
-    ip: string;
-    country: string;
-    status: string;
-  };
-}
 
 // Fonction pour obtenir un proxy aléatoire
 async function getRandomProxy(): Promise<string | null> {
@@ -625,7 +536,7 @@ const webtoonSource: Source = {
       return { titleId: null, url: null };
     }
   },
-  getChapters: async (titleId: string, url: string) => {
+  getChapters: async (titleId: string, url: string): Promise<ChaptersResult> => {
     try {
       const browser = await puppeteer.launch({
         headless: true,
@@ -862,7 +773,7 @@ const mangaScantradSource: Source = {
       await browser.close();
     }
   },
-  getChapters: async (titleId: string, url: string) => {
+  getChapters: async (titleId: string, url: string): Promise<ChaptersResult> => {
     const { browser, page } = await setupBrowser();
     
     try {
@@ -1012,7 +923,7 @@ const mangadexSource: Source = {
       return { titleId: null, url: null };
     }
   },
-  getChapters: async (titleId: string, url: string) => {
+  getChapters: async (titleId: string, url: string): Promise<ChaptersResult> => {
     try {
       logger.log('info', 'Récupération des chapitres depuis MangaDex', { titleId });
 
