@@ -1,9 +1,10 @@
 import { Manga } from '@/app/types/manga';
 import { logger } from '@/app/utils/logger';
+import { Cache } from '@/app/utils/cache';
 
-// Cache simple pour les résultats (5 minutes)
+// Cache multi-niveaux (mémoire + Redis) pour les résultats (5 minutes)
 const CACHE_DURATION = 5 * 60 * 1000;
-const cache = new Map<string, { data: Manga[], timestamp: number }>();
+const cache = new Cache(CACHE_DURATION);
 
 export async function POST(request: Request) {
   try {
@@ -15,17 +16,17 @@ export async function POST(request: Request) {
 
     // Vérification du cache
     const cacheKey = searchQuery.toLowerCase();
-    const cachedData = cache.get(cacheKey);
-    if (cachedData && (Date.now() - cachedData.timestamp) < CACHE_DURATION) {
+    const cachedData = await cache.get(cacheKey);
+    if (cachedData) {
       logger.log('info', 'Résultats retournés depuis le cache', {
         query: searchQuery,
-        resultsCount: cachedData.data.length
+        resultsCount: cachedData.length
       });
       return Response.json({
         success: true,
-        results: cachedData.data,
+        results: cachedData,
         metadata: {
-          totalResults: cachedData.data.length,
+          totalResults: cachedData.length,
           source: 'mangadex',
           cached: true
         }
@@ -184,10 +185,7 @@ export async function POST(request: Request) {
     })).then(results => results.filter((manga: Manga | null): manga is Manga => manga !== null));
 
     // Mise en cache des résultats
-    cache.set(cacheKey, {
-      data: results,
-      timestamp: Date.now()
-    });
+    await cache.set(cacheKey, results);
 
     logger.log('info', 'Recherche réussie', {
       query: searchQuery,

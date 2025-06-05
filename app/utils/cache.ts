@@ -1,32 +1,47 @@
+import { getRedisClient } from './redisClient';
+
 interface CacheEntry {
   data: any;
   timestamp: number;
 }
 
 export class Cache {
-  private cache: { [key: string]: CacheEntry } = {};
+  private memoryCache: { [key: string]: CacheEntry } = {};
   private ttl: number;
 
-  constructor(ttl: number = 3600000) { // 1 heure par défaut
+  constructor(ttl: number = 3600000) {
     this.ttl = ttl;
   }
 
-  set(key: string, data: any): void {
-    this.cache[key] = {
-      data,
-      timestamp: Date.now()
-    };
-  }
-
-  get(key: string): any | null {
-    const entry = this.cache[key];
-    if (!entry) return null;
-    
-    if (Date.now() - entry.timestamp > this.ttl) {
-      delete this.cache[key];
-      return null;
+  async set(key: string, data: any): Promise<void> {
+    this.memoryCache[key] = { data, timestamp: Date.now() };
+    try {
+      const client = await getRedisClient();
+      await client.setEx(key, Math.floor(this.ttl / 1000), JSON.stringify(data));
+    } catch (err) {
+      console.error('Redis set error', err);
     }
-
-    return entry.data;
   }
-} 
+
+  async get(key: string): Promise<any | null> {
+    const entry = this.memoryCache[key];
+    if (entry && Date.now() - entry.timestamp <= this.ttl) {
+      return entry.data;
+    }
+    if (entry) {
+      delete this.memoryCache[key];
+    }
+    try {
+      const client = await getRedisClient();
+      const val = await client.get(key);
+      if (val) {
+        const data = JSON.parse(val);
+        this.memoryCache[key] = { data, timestamp: Date.now() };
+        return data;
+      }
+    } catch (err) {
+      console.error('Redis get error', err);
+    }
+    return null;
+  }
+}

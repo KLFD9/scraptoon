@@ -16,7 +16,8 @@
     "puppeteer-core": "^23.11.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-intersection-observer": "^9.14.1"
+    "react-intersection-observer": "^9.14.1",
+    "redis": "^4.7.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
