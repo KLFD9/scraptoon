@@ -114,8 +114,11 @@ const SCRAPING_CONFIGS: Record<string, ScrapingConfig[]> = {
     },
     {
       name: 'generic-manga',
-      urlPattern: (slug: string, chapter: string) => {
+      urlPattern: (slug: string, chapter?: string) => {
         // Fallback générique - on essaiera plusieurs sites
+        if (!chapter) {
+          throw new Error('Chapter is required for this URL pattern');
+        }
         return `https://www.google.com/search?q=${encodeURIComponent(slug)}+chapitre+${chapter}+lecture+en+ligne`;
       },
       selectors: {
