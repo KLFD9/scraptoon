@@ -41,3 +41,10 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Improved scraping logic using custom lazy-load steps.
 - Fixed image aspect ratio warnings using explicit style attributes.
 - Hook `useChapterNavigation` to manage chapter navigation.
+- Progress indicator showing loaded pages vs total while reading.
+
+## Usage
+
+When you open a chapter, a progress bar at the top indicates how many pages have
+finished loading compared to the total number of pages. This helps you monitor
+the loading status as you read
