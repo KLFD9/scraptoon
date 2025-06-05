@@ -100,37 +100,40 @@ const SCRAPING_CONFIGS: Record<string, ScrapingConfig[]> = {
 async function performLazyLoad(
   page: Page,
   lazyConfig?: ScrapingConfig['selectors']['lazyLoad']
-) {
-  if (!lazyConfig) return;
+): Promise<void> {
+  if (!lazyConfig) {
+    console.log('⚠️ Aucune configuration de lazy load fournie');
+    return;
+  }
   const { attribute, scrollStep = 1000, maxScrolls = 20, beforeScroll } = lazyConfig;
   for (let i = 0; i < maxScrolls; i++) {
     if (beforeScroll) {
       await beforeScroll(page);
     }
-    await page.evaluate(step => {
+    await page.evaluate((step: number) => {
       window.scrollBy(0, step);
     }, scrollStep);
-    await page.evaluate(attr => {
-      document.querySelectorAll(`img[${attr}]`).forEach(img => {
-        const el = img as HTMLImageElement;
-        const data = el.getAttribute(attr);
-        if (data && !el.src) {
-          el.src = data;
-        }
-      });
-    }, attribute);
-    await page.waitForTimeout(500);
+    if (attribute) {
+      await page.evaluate((attr: string) => {
+        document.querySelectorAll(`img[${attr}]`).forEach(img => {
+          const el = img as HTMLImageElement;
+          const data = el.getAttribute(attr);
+          if (data && !el.src) {
+            el.src = data;
+          }
+        });
+      }, attribute);
+    }
+    await new Promise(resolve => setTimeout(resolve, 500));
   }
 }
 
-async function scrapeImages(page: Page, config: ScrapingConfig): Promise<string[]> {
-  const images = new Map<string, string>();
-  console.log(`📝 Début du scraping avec la configuration ${config.name}`);
-
-async function scrapeImagesRobust(page: Page, config: ScrapingConfig): Promise<string[]> {
+async function scrapeImagesRobust(
+  page: Page, 
+  config: ScrapingConfig
+): Promise<string[]> {
   const images = new Map<string, number>();
   console.log(`📝 Début du scraping robuste avec la configuration ${config.name}`);
-
 
   try {
     // Attendre le chargement initial avec timeout réduit
@@ -139,6 +142,7 @@ async function scrapeImagesRobust(page: Page, config: ScrapingConfig): Promise<s
       console.log('✅ Page chargée, éléments visuels détectés');
     } catch {
       console.log('⚠️ Timeout sur les éléments visuels, continuation...');
+      return [];
     }
 
     // Désactiver les animations et popups
@@ -176,8 +180,8 @@ async function scrapeImagesRobust(page: Page, config: ScrapingConfig): Promise<s
           .filter(url => url);
       });
 
-      urls.forEach(url => {
-        if (url) images.set(url, url);
+      urls.forEach((url: string | null) => {
+        if (url) images.set(url, images.size + 1);
       });
 
     } else {
@@ -185,7 +189,7 @@ async function scrapeImagesRobust(page: Page, config: ScrapingConfig): Promise<s
       console.log('🔄 Scroll progressif');
       await performLazyLoad(page, config.selectors.lazyLoad);
 
-      const currentUrls = await page.evaluate((selectors) => {
+      const currentUrls = await page.evaluate((selectors: string[]) => {
         const urls = new Set<string>();
         selectors.forEach(selector => {
           document.querySelectorAll(selector).forEach(img => {
@@ -200,36 +204,38 @@ async function scrapeImagesRobust(page: Page, config: ScrapingConfig): Promise<s
         return Array.from(urls);
       }, config.selectors.images);
 
-      currentUrls.forEach(url => {
-        images.set(url, url);
+currentUrls.forEach((url: string) => {
+        if (!images.has(url)) {
+          images.set(url, images.size + 1);
+        }
       });
 
       console.log(`📊 Images récupérées: ${images.size}`);
-=======
-    // Scroll progressif pour charger le contenu lazy
-    console.log('🔄 Scroll pour charger le contenu...');
-    const scrollSteps = config.selectors.lazyLoad?.maxScrolls || 20;
-    const stepSize = config.selectors.lazyLoad?.scrollStep || 500;
 
-    for (let i = 0; i < scrollSteps; i++) {
-      await page.evaluate((step) => {
-        window.scrollTo(0, step * 500);
-      }, i);
-      
-      await new Promise(resolve => setTimeout(resolve, 200));
-      
-      // Vérifier si de nouvelles images sont apparues
-      const currentImageCount = await page.evaluate(() => 
-        document.querySelectorAll('img[src], img[data-src], img[data-url]').length
-      );
-      
-      if (i % 5 === 0) {
-        console.log(`📸 Scroll ${i}/${scrollSteps}: ${currentImageCount} images détectées`);
+      // Scroll progressif pour charger le contenu lazy
+      console.log('🔄 Scroll pour charger le contenu...');
+      const scrollSteps = config.selectors.lazyLoad?.maxScrolls || 20;
+      const stepSize = config.selectors.lazyLoad?.scrollStep || 500;
+
+      for (let i = 0; i < scrollSteps; i++) {
+await page.evaluate((step: number) => {
+          window.scrollTo(0, step * 500);
+        }, i);
+        
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Vérifier si de nouvelles images sont apparues
+        const currentImageCount = await page.evaluate(() => 
+          document.querySelectorAll('img[src], img[data-src], img[data-url]').length
+        );
+        
+        if (i % 5 === 0) {
+          console.log(`📸 Scroll ${i}/${scrollSteps}: ${currentImageCount} images détectées`);
+        }
       }
-    }
 
-    // Essayer tous les sélecteurs d'images
-    for (const selector of config.selectors.images) {
+      // Essayer tous les sélecteurs d'images
+      for (const selector of config.selectors.images) {
       try {
         const imgSrcs = await page.evaluate((sel) => {
           const elements = document.querySelectorAll(sel);
@@ -265,52 +271,57 @@ async function scrapeImagesRobust(page: Page, config: ScrapingConfig): Promise<s
       }
     }
 
-    // Si toujours aucune image, essayer une approche plus générique
-    if (images.size === 0) {
-      console.log('🔍 Tentative de scraping générique...');
-      
-      const genericImages = await page.evaluate(() => {
-        const allImages = Array.from(document.querySelectorAll('img[src]'));
-        const sources: string[] = [];
+      // Si toujours aucune image, essayer une approche plus générique
+      if (images.size === 0) {
+        console.log('🔍 Tentative de scraping générique...');
         
-        allImages.forEach(img => {
-          const src = (img as HTMLImageElement).src;
-          if (src && src.startsWith('http')) {
-            const isLargeImage = (img as HTMLImageElement).naturalWidth > 200 && (img as HTMLImageElement).naturalHeight > 200;
-            const isSystemImage = /icon|logo|banner|avatar|profile|button|ad|sponsor/i.test(src);
-            
-            if (isLargeImage && !isSystemImage) {
-              sources.push(src);
+        const genericImages = await page.evaluate(() => {
+          const allImages = Array.from(document.querySelectorAll('img[src]'));
+          const sources: string[] = [];
+          
+          allImages.forEach(img => {
+            const src = (img as HTMLImageElement).src;
+            if (src && src.startsWith('http')) {
+              const isLargeImage = (img as HTMLImageElement).naturalWidth > 200 && (img as HTMLImageElement).naturalHeight > 200;
+              const isSystemImage = /icon|logo|banner|avatar|profile|button|ad|sponsor/i.test(src);
+              
+              if (isLargeImage && !isSystemImage) {
+                sources.push(src);
+              }
             }
+          });
+          
+          return sources;
+        });
+
+        // Ajouter les images génériques à la liste
+        genericImages.forEach(src => {
+          if (!images.has(src)) {
+            images.set(src, images.size + 1);
           }
         });
-        
-        return sources;
-      });
 
-      genericImages.forEach(src => {
-        if (!images.has(src)) {
-          images.set(src, images.size + 1);
-        }
-      });
+        console.log(`🖼️ ${genericImages.length} images génériques trouvées`);
+      }
 
-      console.log(`🖼️ ${genericImages.length} images génériques trouvées`);
+      return Array.from(images.keys());
+    } catch (error) {
+      console.error(`❌ Erreur lors du scraping robuste: ${error}`);
+      return [];
     }
-
-    return Array.from(images.keys());
-
-  } catch (error) {
-    console.error(`❌ Erreur lors du scraping robuste: ${error}`);
-    return [];
   }
 }
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; chapterId: string }> }
-) {
+  { params }: { params: { id: string; chapterId: string } }
+): Promise<NextResponse> {
   try {
-    const { id: mangaId, chapterId } = await params;
+  try {
+    const { id: mangaId, chapterId } = params;
+    if (!mangaId || !chapterId) {
+      throw new Error('ID de manga ou de chapitre manquant');
+    }
     const cacheKey = `chapter-${mangaId}-${chapterId}`;
 
     // Vérifier le cache
@@ -426,11 +437,10 @@ export async function GET(
     };
 
     // Mettre en cache pour 1 heure
-    cache.set(cacheKey, result, 3600);
+    cache.set(cacheKey, result);
 
     console.log(`✅ Scraping terminé: ${images.length} images trouvées`);
-    return NextResponse.json(result);
-
+      return NextResponse.json(result);
   } catch (error) {
     console.error('❌ Erreur:', error);
     return NextResponse.json(
