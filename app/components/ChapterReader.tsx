@@ -6,19 +6,17 @@ import { ChevronUp } from 'lucide-react'
 
 interface ChapterReaderProps {
   pages: string[]
-  title: string
   chapter: string
   mangaTitle: string
   onPageChange?: (page: number) => void
 }
 
-const ChapterReader: React.FC<ChapterReaderProps> = ({ pages, title, chapter, mangaTitle, onPageChange }) => {
+const ChapterReader: React.FC<ChapterReaderProps> = ({ pages, chapter, mangaTitle, onPageChange }) => {
   const [currentPage, setCurrentPage] = useState(1)
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set())
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set())
   const [isUIVisible, setIsUIVisible] = useState(true)
   const lastScrollY = useRef(0)
-  const totalPages = pages.length
   const containerRef = useRef<HTMLDivElement>(null)
 
   const handleScroll = useCallback(() => {
