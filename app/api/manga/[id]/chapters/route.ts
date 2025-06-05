@@ -138,6 +138,9 @@ interface LogData {
   executionTime?: number;
   maxRetries?: number;
   delay?: number;
+  blockStatus?: any;
+  params?: any;
+
   blockStatus?: {
     isBlocked: boolean;
     hasValidContent: boolean;
@@ -146,6 +149,7 @@ interface LogData {
   params?: Record<string, unknown>;
   variants?: string[];
   original?: string;
+
   totalPages?: number;
   count?: number;
   variant?: string;
@@ -157,28 +161,11 @@ interface LogData {
   resultsCount?: number;
   total?: number;
   isValidPage?: boolean;
-  googleUrl?: string;
-  pageInfo?: {
-    hasTitle: boolean;
-    hasSynopsis: boolean;
-    hasCover: boolean;
-    hasInfo: boolean;
-    hasChapters: boolean;
-    title: string | null;
-  };
-  elements?: {
-    hasTitle: boolean;
-    hasSynopsis: boolean;
-    hasCover: boolean;
-    hasInfo: boolean;
-    hasChapters: boolean;
-    title: string | null;
-  };
-  formattedTitle?: string;
   pageStatus?: {
     hasValidContent: boolean;
     errors: Record<string, boolean>;
   };
+
   proxyInfo?: {
     ip: string;
     country: string;
@@ -206,92 +193,6 @@ async function getRandomProxy(): Promise<string | null> {
   }
 }
 
-// Fonction pour configurer le navigateur avec un proxy
-async function setupBrowserWithProxy() {
-  const proxy = await getRandomProxy();
-  if (!proxy) {
-    return setupBrowser();
-  }
-
-  const browser = await puppeteer.launch({
-    headless: false,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-accelerated-2d-canvas',
-      '--disable-gpu',
-      '--window-size=1920x1080',
-      '--disable-web-security',
-      '--disable-features=IsolateOrigins,site-per-process',
-      '--disable-blink-features=AutomationControlled',
-      `--proxy-server=${proxy}`
-    ],
-    defaultViewport: null
-  });
-
-  const page = await browser.newPage();
-  
-  // Configuration anti-détection
-  await page.evaluateOnNewDocument(() => {
-    delete Object.getPrototypeOf(navigator).webdriver;
-    // @ts-ignore
-    window.navigator.chrome = {
-      runtime: {},
-    };
-    Object.defineProperty(navigator, 'languages', {
-      get: () => ['fr-FR', 'fr', 'en-US', 'en'],
-    });
-    Object.defineProperty(navigator, 'plugins', {
-      get: () => [
-        {
-          0: {type: "application/x-google-chrome-pdf"},
-          description: "Portable Document Format",
-          filename: "internal-pdf-viewer",
-          length: 1,
-          name: "Chrome PDF Plugin"
-        }
-      ],
-    });
-  });
-
-  // Configuration des en-têtes
-  await page.setExtraHTTPHeaders({
-    'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Connection': 'keep-alive',
-    'Cache-Control': 'max-age=0',
-    'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-    'sec-ch-ua-mobile': '?0',
-    'sec-ch-ua-platform': '"Windows"',
-    'Upgrade-Insecure-Requests': '1',
-    'Sec-Fetch-Site': 'none',
-    'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-User': '?1',
-    'Sec-Fetch-Dest': 'document'
-  });
-
-  await page.setViewport({ width: 1920, height: 1080 });
-
-  // Vérifier le proxy
-  try {
-    await page.goto('https://api.myip.com', { waitUntil: 'networkidle0' });
-    const proxyInfo = await page.evaluate(() => {
-      return JSON.parse(document.body.textContent || '{}');
-    });
-    
-    logger.log('info', 'Proxy configuré avec succès', {
-      proxyInfo
-    });
-  } catch (error) {
-    logger.log('warning', 'Erreur lors de la vérification du proxy', {
-      error: error instanceof Error ? error.message : 'Erreur inconnue'
-    });
-  }
-
-  return { browser, page };
-}
 
 // Fonction pour contourner Cloudflare
 async function handleCloudflare(page: Page): Promise<boolean> {
@@ -424,7 +325,6 @@ async function bypassBlocker(page: Page, url: string, maxRetries = 3): Promise<b
 
   return false;
 }
-
 
 
 // Source Webtoon

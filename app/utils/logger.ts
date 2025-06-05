@@ -42,6 +42,8 @@ export interface LogData {
     hasValidContent: boolean;
     indicators: Record<string, boolean>;
   };
+
+  params?: any;
   params?: Record<string, unknown>;
   variants?: string[];
   original?: string;
@@ -56,24 +58,6 @@ export interface LogData {
   resultsCount?: number;
   total?: number;
   isValidPage?: boolean;
-  googleUrl?: string;
-  pageInfo?: {
-    hasTitle: boolean;
-    hasSynopsis: boolean;
-    hasCover: boolean;
-    hasInfo: boolean;
-    hasChapters: boolean;
-    title: string | null;
-  };
-  elements?: {
-    hasTitle: boolean;
-    hasSynopsis: boolean;
-    hasCover: boolean;
-    hasInfo: boolean;
-    hasChapters: boolean;
-    title: string | null;
-  };
-  formattedTitle?: string;
   pageStatus?: {
     hasValidContent: boolean;
     errors: Record<string, boolean>;
