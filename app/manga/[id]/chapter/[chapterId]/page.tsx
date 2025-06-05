@@ -3,6 +3,7 @@
 import { Suspense } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { retry } from '@/app/utils/retry';
 import { ArrowLeft, ChevronLeft, ChevronRight, List, Settings } from 'lucide-react';
 import ChapterReader from '@/app/components/ChapterReader';
 import { useChapterNavigation, Chapter as NavChapter } from '@/app/hooks/useChapterNavigation';
@@ -47,7 +48,7 @@ function ChapterReaderContent() {
         }
 
         // Récupérer la liste des chapitres pour la navigation
-        const chaptersResponse = await fetch(`/api/manga/${mangaId}/chapters?page=1`);
+        const chaptersResponse = await retry(() => fetch(`/api/manga/${mangaId}/chapters?page=1`), 3, 500);
         if (chaptersResponse.ok) {
           const chaptersData = await chaptersResponse.json();
           if (chaptersData.chapters) {
@@ -56,20 +57,32 @@ function ChapterReaderContent() {
         }
 
         // Récupérer les données du chapitre
-        const response = await fetch(`/api/manga/${mangaId}/chapter/${chapterId}`);
+        const response = await retry(() => fetch(`/api/manga/${mangaId}/chapter/${chapterId}`), 3, 500);
         const data = await response.json();
 
         if (!response.ok) {
           throw new Error(data.error || 'Erreur lors du chargement du chapitre');
         }
 
-        if (!data || !data.pages) {
+        const pagesArray = Array.isArray(data.pages)
+          ? data.pages
+          : Array.isArray(data.images)
+          ? data.images
+          : null;
+
+        if (!data || !pagesArray) {
           throw new Error('Données du chapitre invalides');
         }
 
-        setChapterData(data);
+        setChapterData({
+          ...data,
+          pages: pagesArray,
+          pageCount: data.pageCount ?? pagesArray.length,
+        });
       } catch (error) {
-        setError(error instanceof Error ? error.message : 'Une erreur est survenue');
+        const message = error instanceof Error ? error.message : 'Une erreur est survenue';
+        console.error(`[${new Date().toISOString()}] ${message}`);
+        setError(message);
         setChapterData(null);
       } finally {
         setLoading(false);
