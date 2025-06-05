@@ -1,4 +1,25 @@
-import { chromium, Browser, Page } from 'playwright';
+import { chromium, Browser } from 'playwright';
+
+interface ContainerInfo {
+  selector: string;
+  exists: boolean;
+  children: number;
+  innerHTML: string;
+}
+
+interface ImageInfo {
+  src: string;
+  dataSrc: string | null;
+  dataUrl: string | null;
+  className: string;
+  parent: string | null;
+}
+
+interface AnalysisResult {
+  foundContainers: ContainerInfo[];
+  images: ImageInfo[];
+  imageStructure: Record<string, unknown>;
+}
 
 // Script pour analyser la structure DOM de vrais sites de manga
 export class SiteAnalyzer {
@@ -40,7 +61,7 @@ export class SiteAnalyzer {
           '.viewer_container'
         ];
 
-        const results: any = {
+        const results: AnalysisResult = {
           foundContainers: [],
           images: [],
           imageStructure: {}
@@ -111,7 +132,7 @@ export class SiteAnalyzer {
           '.chapter-reader'
         ];
 
-        const results: any = {
+        const results: AnalysisResult = {
           foundContainers: [],
           images: [],
           imageStructure: {}
@@ -188,14 +209,14 @@ async function main() {
     
     if (webtoonAnalysis?.foundContainers.length > 0) {
       console.log('\nWebtoons - Conteneurs trouvés:');
-      webtoonAnalysis.foundContainers.forEach((container: any) => {
+      webtoonAnalysis.foundContainers.forEach((container: ContainerInfo) => {
         console.log(`  - ${container.selector} (${container.children} enfants)`);
       });
     }
     
     if (reaperAnalysis?.foundContainers.length > 0) {
       console.log('\nReaper-Scans - Conteneurs trouvés:');
-      reaperAnalysis.foundContainers.forEach((container: any) => {
+      reaperAnalysis.foundContainers.forEach((container: ContainerInfo) => {
         console.log(`  - ${container.selector} (${container.children} enfants)`);
       });
     }

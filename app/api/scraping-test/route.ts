@@ -35,20 +35,20 @@ export async function POST(request: NextRequest) {
       pageInfo: result.pageInfo,
       workingSelectors: {
         containers: result.elements.containers
-          .filter((c: any) => c.found > 0)
-          .map((c: any) => ({ selector: c.selector, count: c.found })),
+          .filter(c => c.found > 0)
+          .map(c => ({ selector: c.selector, count: c.found })),
         images: result.elements.images
-          .filter((i: any) => i.found > 0)  
-          .map((i: any) => ({ selector: i.selector, count: i.found, samples: i.sources?.slice(0, 3) }))
+          .filter(i => i.found > 0)
+          .map(i => ({ selector: i.selector, count: i.found, samples: i.sources?.slice(0, 3) }))
       },
       errors: result.errors,
       recommendations: {
         bestContainer: result.elements.containers
-          .filter((c: any) => c.found > 0)
-          .sort((a: any, b: any) => b.found - a.found)[0]?.selector,
+          .filter(c => c.found > 0)
+          .sort((a, b) => b.found - a.found)[0]?.selector,
         bestImageSelector: result.elements.images
-          .filter((i: any) => i.found > 0)
-          .sort((a: any, b: any) => b.found - a.found)[0]?.selector,
+          .filter(i => i.found > 0)
+          .sort((a, b) => b.found - a.found)[0]?.selector,
         hasLazyLoading: result.pageInfo.hasLazyLoading,
         totalImages: result.pageInfo.totalImages
       }

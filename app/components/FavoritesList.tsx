@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { FavoriteManga, ReadingStatus } from '../types/manga';
-import { Heart, BookOpen, BookX, CheckCircle, Edit3, Trash2, Filter, BarChart2, Search, Clock, ArrowUpDown, Info } from 'lucide-react';
+import { BookOpen, BookX, CheckCircle, Edit3, Trash2, Filter, BarChart2, Search, Clock, ArrowUpDown, Info } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';

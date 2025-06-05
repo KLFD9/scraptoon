@@ -69,6 +69,7 @@ function MangaContent() {
     if (mangaId) {
       fetchMangaDetails();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mangaId]);
 
   const handleFavoriteClick = () => {
@@ -141,7 +142,7 @@ function MangaContent() {
             Manga non trouvé
           </h1>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Le manga que vous recherchez n&apos;existe pas ou n'est plus disponible.
+            Le manga que vous recherchez n&apos;existe pas ou n&apos;est plus disponible.
           </p>
           <button
             onClick={() => router.back()}

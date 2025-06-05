@@ -1,4 +1,4 @@
-import { batchDiagnose, generateOptimalSelectors } from '../utils/scraping-diagnostics';
+import { batchDiagnose, generateOptimalSelectors, type DiagnosticResult } from '../utils/scraping-diagnostics';
 
 async function testScrapingConfigs() {
   console.log('🔍 Diagnostic des configurations de scraping...\n');
@@ -77,7 +77,9 @@ async function testScrapingConfigs() {
   }
 }
 
-function generateUpdatedConfig(results: any[]) {
+type DiagnosticTestResult = DiagnosticResult & { name: string; expectedImages?: number };
+
+function generateUpdatedConfig(results: DiagnosticTestResult[]) {
   const successfulResults = results.filter(r => r.success);
   
   if (successfulResults.length === 0) {
@@ -89,20 +91,20 @@ function generateUpdatedConfig(results: any[]) {
   
   for (const result of successfulResults) {
     const workingContainers = result.elements.containers
-      .filter((c: any) => c.found > 0)
-      .map((c: any) => c.selector)
+      .filter(c => c.found > 0)
+      .map(c => c.selector)
       .slice(0, 3);
     
     const workingImages = result.elements.images
-      .filter((i: any) => i.found > 0)
-      .map((i: any) => i.selector)
+      .filter(i => i.found > 0)
+      .map(i => i.selector)
       .slice(0, 5);
 
     if (workingContainers.length > 0 && workingImages.length > 0) {
       console.log(`  // ${result.name}`);
       console.log(`  '${result.name.toLowerCase().replace(/\s+/g, '-')}': {`);
       console.log(`    container: '${workingContainers.join(', ')}',`);
-      console.log(`    images: [${workingImages.map((s: any) => `'${s}'`).join(', ')}],`);
+      console.log(`    images: [${workingImages.map(s => `'${s}'`).join(', ')}],`);
       console.log(`    lazyLoad: ${result.pageInfo.hasLazyLoading},`);
       console.log(`    // Trouvé ${result.pageInfo.totalImages} images`);
       console.log(`  },`);

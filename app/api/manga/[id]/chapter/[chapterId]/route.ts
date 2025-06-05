@@ -2,6 +2,27 @@ import { NextRequest, NextResponse } from 'next/server';
 import puppeteer, { Page, Browser } from 'puppeteer';
 import { Cache } from '@/app/utils/cache';
 
+
+interface ChapterCacheData {
+  id: string;
+  mangaId: string;
+  title: string;
+  chapter: string | null;
+  volume: string | null;
+  pageCount: number;
+  pages: string[];
+  language: string;
+  scrapingMethod: string | null;
+  mangaTitle: string;
+  publishAt: string;
+  readableAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Cache pour les images de chapitres (1 heure)
+const cache = new Cache<ChapterCacheData>(3600000);
+=======
 // Préférer l'API MangaDex puis basculer sur Puppeteer en secours
 // Cache pour les images de chapitres (1 heure)
 const cache = new Cache<ChapterResult>(3600000);
@@ -52,9 +73,10 @@ async function getMangaDexChapterImages(
   }
 }
 
+
 interface ScrapingConfig {
   name: string;
-  urlPattern: (slug: string, chapter: string, title?: string) => string;
+  urlPattern: (slug: string, chapter?: string, title?: string) => string;
   selectors: {
     container: string;
     images: string[];
@@ -89,7 +111,7 @@ const SCRAPING_CONFIGS: Record<string, ScrapingConfig[]> = {
   fr: [
     {
       name: 'webtoons-fr',
-      urlPattern: (slug: string, chapter: string, title?: string) => {
+      urlPattern: (slug: string) => {
         // Format plus flexible pour webtoons
         return `https://www.webtoons.com/fr/search?keyword=${encodeURIComponent(slug)}`;
       },
@@ -139,7 +161,7 @@ const SCRAPING_CONFIGS: Record<string, ScrapingConfig[]> = {
   en: [
     {
       name: 'webtoons-en',
-      urlPattern: (slug: string, chapter: string, title?: string) => {
+      urlPattern: (slug: string) => {
         return `https://www.webtoons.com/en/search?keyword=${encodeURIComponent(slug)}`;
       },
       selectors: {
@@ -293,9 +315,13 @@ async function scrapeImagesRobust(
       const stepSize = config.selectors.lazyLoad?.scrollStep || 500;
 
       for (let i = 0; i < scrollSteps; i++) {
-        await page.evaluate((step: number) => {
-          window.scrollTo(0, step * 500);
-        }, i);
+        await page.evaluate(
+          (step: number, size: number) => {
+            window.scrollTo(0, step * size);
+          },
+          i,
+          stepSize
+        );
         
         await new Promise(resolve => setTimeout(resolve, 200));
         

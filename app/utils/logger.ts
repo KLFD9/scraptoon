@@ -31,8 +31,6 @@ export interface LogData {
   source?: string;
   titleId?: string;
   totalChapters?: number;
-  firstChapter?: unknown;
-  lastChapter?: unknown;
   firstChapter?: ChapterInfo;
   lastChapter?: ChapterInfo;
   cacheKey?: string;
@@ -45,7 +43,6 @@ export interface LogData {
     indicators: Record<string, boolean>;
   };
 
-  params?: any;
   params?: Record<string, unknown>;
   variants?: string[];
   original?: string;
