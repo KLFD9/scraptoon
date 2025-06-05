@@ -132,7 +132,7 @@ async function performLazyLoad(
       
       await new Promise(resolve => setTimeout(resolve, 500));
     } catch (error) {
-      console.error(`❌ Erreur lors du chargement paresseux (scroll ${i + 1}/${maxScrolls}):`, error);
+      console.error(`${new Date().toISOString()} ❌ Erreur lors du chargement paresseux (scroll ${i + 1}/${maxScrolls}):`, error);
     }
   }
   
@@ -293,7 +293,7 @@ async function scrapeImagesRobust(
     // Retourner les URLs uniques des images
     return Array.from(images.keys());
   } catch (error) {
-    console.error(`❌ Erreur lors du scraping robuste: ${error}`);
+    console.error(`${new Date().toISOString()} ❌ Erreur lors du scraping robuste: ${error}`);
     return [];
   }
 }
@@ -303,7 +303,7 @@ export async function GET(
   { params }: { params: { id: string; chapterId: string } }
 ): Promise<NextResponse> {
   try {
-    const { id: mangaId, chapterId } = params;
+    const { id: mangaId, chapterId } = await Promise.resolve(params);
     if (!mangaId || !chapterId) {
       throw new Error('ID de manga ou de chapitre manquant');
     }
@@ -427,7 +427,7 @@ export async function GET(
     console.log(`✅ Scraping terminé: ${images.length} images trouvées`);
     return NextResponse.json(result);
   } catch (error) {
-    console.error('❌ Erreur:', error);
+    console.error(`${new Date().toISOString()} ❌ Erreur:`, error);
     return NextResponse.json(
       { error: 'Erreur lors de la récupération du chapitre', details: String(error) },
       { status: 500 }
