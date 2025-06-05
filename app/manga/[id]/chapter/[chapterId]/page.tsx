@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { retry } from '@/app/utils/retry';
 import { ArrowLeft, ChevronLeft, ChevronRight, List, Settings } from 'lucide-react';
 import ChapterReader from '@/app/components/ChapterReader';
@@ -30,7 +30,7 @@ function ChapterReaderContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showHeader, setShowHeader] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const lastScrollY = useRef(0);
   const [allChapters, setAllChapters] = useState<NavChapter[]>([]);
   const { prevChapterId, nextChapterId } = useChapterNavigation(
     allChapters,
@@ -96,44 +96,35 @@ function ChapterReaderContent() {
 
   // Gérer l'affichage/masquage de l'en-tête au scroll
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-    
+    let ticking = false;
+
     const handleScroll = () => {
-      setShowHeader(true);
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        if (!isFullscreen) {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const currentY = window.scrollY;
+        if (currentY < lastScrollY.current) {
+          setShowHeader(true);
+        } else if (currentY > lastScrollY.current) {
           setShowHeader(false);
         }
-      }, 3000);
+        lastScrollY.current = currentY;
+        ticking = false;
+      });
     };
 
     const handleMouseMove = () => {
       setShowHeader(true);
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        if (!isFullscreen) {
-          setShowHeader(false);
-        }
-      }, 3000);
     };
 
     window.addEventListener('scroll', handleScroll);
     window.addEventListener('mousemove', handleMouseMove);
 
-    // Masquer l'en-tête après 3 secondes
-    timeoutId = setTimeout(() => {
-      if (!isFullscreen) {
-        setShowHeader(false);
-      }
-    }, 3000);
-
     return () => {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('mousemove', handleMouseMove);
-      clearTimeout(timeoutId);
     };
-  }, [isFullscreen]);
+  }, []);
 
   const navigateToChapter = (targetChapterId: string) => {
     router.push(`/manga/${mangaId}/chapter/${targetChapterId}`);
@@ -146,10 +137,8 @@ function ChapterReaderContent() {
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen();
-      setIsFullscreen(true);
     } else {
       document.exitFullscreen();
-      setIsFullscreen(false);
     }
   };
 
@@ -210,7 +199,7 @@ function ChapterReaderContent() {
       <div className={`fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-sm transition-transform duration-300 ${
         showHeader ? 'translate-y-0' : '-translate-y-full'
       }`}>
-        <div className="container mx-auto px-4 py-3">
+        <div className="container mx-auto px-4 py-1">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button
@@ -298,7 +287,7 @@ function ChapterReaderContent() {
       {/* Barre de navigation inférieure */}
       <div className={`fixed bottom-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-sm transition-transform duration-300 ${
         showHeader ? 'translate-y-0' : 'translate-y-full'
-      }`}>          <div className="container mx-auto px-4 py-3">
+      }`}>          <div className="container mx-auto px-4 py-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <span className="text-sm text-gray-300">
