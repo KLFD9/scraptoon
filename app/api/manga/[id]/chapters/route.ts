@@ -28,12 +28,6 @@ interface ChaptersResult {
   totalChapters: number;
 }
 
-interface Source {
-  name: string;
-  baseUrl: string;
-  search: (title: string) => Promise<{ titleId: string | null; url: string | null }>;
-  getChapters: (titleId: string, url: string) => Promise<ChaptersResult>;
-}
 
 interface SourceSearchResult {
   source: string;
