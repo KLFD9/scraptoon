@@ -49,6 +49,12 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Unified API response with `pageCount` and `pages` array.
 - Stronger type safety with explicit interfaces replacing `any`.
 
+- Chapter images fetched via the MangaDex API with cached results (fallback to scraping).
+
+- Rate limiter on `/api/scraper` prevents abusive calls.
+- Search queries are sanitized and only HTTPS requests are allowed.
+
+
 ## Usage
 
 When you open a chapter, a progress bar at the top indicates how many pages have

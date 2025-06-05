@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import puppeteer, { Page } from 'puppeteer';
+import puppeteer, { Page, Browser } from 'puppeteer';
 import { Cache } from '@/app/utils/cache';
+
 
 interface ChapterCacheData {
   id: string;
@@ -21,6 +22,57 @@ interface ChapterCacheData {
 
 // Cache pour les images de chapitres (1 heure)
 const cache = new Cache<ChapterCacheData>(3600000);
+=======
+// Préférer l'API MangaDex puis basculer sur Puppeteer en secours
+// Cache pour les images de chapitres (1 heure)
+const cache = new Cache<ChapterResult>(3600000);
+
+// Navigateur Puppeteer réutilisé entre les appels
+let browserPromise: Promise<Browser> | null = null;
+
+async function getBrowser(): Promise<Browser> {
+  if (!browserPromise) {
+    browserPromise = puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor',
+      ],
+    });
+  }
+  return browserPromise;
+}
+
+async function getMangaDexChapterImages(
+  chapterId: string,
+): Promise<string[]> {
+  try {
+    const res = await fetch(
+      `https://api.mangadex.org/at-home/server/${encodeURIComponent(chapterId)}`,
+    );
+    if (!res.ok) {
+      console.log(
+        `${new Date().toISOString()} ⚠️ MangaDex at-home failed: ${res.status}`,
+      );
+      return [];
+    }
+    const data = await res.json();
+    const baseUrl = data.baseUrl as string;
+    const hash = data.chapter.hash as string;
+    const images = data.chapter.data as string[];
+    return images.map((file) => `${baseUrl}/data/${hash}/${file}`);
+  } catch (error) {
+    console.error(
+      `${new Date().toISOString()} ❌ MangaDex fetch error:`,
+      error,
+    );
+    return [];
+  }
+}
+
 
 interface ScrapingConfig {
   name: string;
@@ -35,6 +87,23 @@ interface ScrapingConfig {
       beforeScroll?: (page: Page) => Promise<void>;
     };
   };
+}
+
+interface ChapterResult {
+  id: string;
+  mangaId: string;
+  title: string;
+  chapter: string | null;
+  volume: string | null;
+  pageCount: number;
+  pages: string[];
+  language: string;
+  scrapingMethod: string | null;
+  mangaTitle: string;
+  publishAt: string | null;
+  readableAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // Configuration améliorée avec sélecteurs plus génériques
@@ -337,10 +406,12 @@ export async function GET(
       return NextResponse.json(cached);
     }
 
-    console.log(`🔍 Début du scraping pour le chapitre ${chapterId}`);
+    console.log(`🔍 Lecture du chapitre ${chapterId}`);
 
     // Récupérer les infos du manga depuis l'API MangaDex
-    const mangaResponse = await fetch(`https://api.mangadex.org/manga/${mangaId}?includes[]=author&includes[]=artist&includes[]=cover_art`);
+    const mangaResponse = await fetch(
+      `https://api.mangadex.org/manga/${encodeURIComponent(mangaId)}?includes[]=author&includes[]=artist&includes[]=cover_art`,
+    );
     
     if (!mangaResponse.ok) {
       throw new Error(`Erreur lors de la récupération du manga: ${mangaResponse.status}`);
@@ -350,7 +421,9 @@ export async function GET(
     const manga = mangaData.data;
     
     // Récupérer les infos du chapitre
-    const chapterResponse = await fetch(`https://api.mangadex.org/chapter/${chapterId}?includes[]=scanlation_group&includes[]=user`);
+    const chapterResponse = await fetch(
+      `https://api.mangadex.org/chapter/${encodeURIComponent(chapterId)}?includes[]=scanlation_group&includes[]=user`,
+    );
     
     if (!chapterResponse.ok) {
       throw new Error(`Erreur lors de la récupération du chapitre: ${chapterResponse.status}`);
@@ -363,52 +436,52 @@ export async function GET(
 
     const language = chapter.attributes.translatedLanguage;
     const configs = SCRAPING_CONFIGS[language] || SCRAPING_CONFIGS['en'];
-    
-    let images: string[] = [];
-    let successfulConfig: string | null = null;
+
+    let images: string[] = await getMangaDexChapterImages(chapterId);
+    let successfulConfig: string | null = images.length > 0 ? 'mangadex-direct' : null;
+
+    if (images.length > 0) {
+      console.log(`✅ ${images.length} images récupérées via MangaDex`);
+    }
 
     // Obtenir le titre en slug format
     const titleSlug = manga.attributes.title.en || manga.attributes.title[Object.keys(manga.attributes.title)[0]];
     const slug = titleSlug.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     const chapterNumber = chapter.attributes.chapter || '1';
 
-    // Essayer chaque configuration
-    for (const config of configs) {
-      try {
-        const url = config.urlPattern(slug, chapterNumber, manga.attributes.title.en);
-        console.log(`🌐 Tentative avec ${config.name}: ${url}`);
-
-        const browser = await puppeteer.launch({
-          headless: true,
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-web-security',
-            '--disable-features=VizDisplayCompositor'
-          ]
-        });
-
-        const page = await browser.newPage();
-        
+    // Utiliser Puppeteer en secours si nécessaire
+    if (images.length === 0) {
+      for (const config of configs) {
         try {
-          await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-          await page.setViewport({ width: 1280, height: 720 });
-          
-          await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-          
-          images = await scrapeImagesRobust(page, config);
-          
-          if (images.length > 0) {
-            successfulConfig = config.name;
-            console.log(`✅ ${images.length} images récupérées avec ${config.name}`);
-            break;
+          const url = config.urlPattern(slug, chapterNumber, manga.attributes.title.en);
+          console.log(`🌐 Fallback avec ${config.name}: ${url}`);
+
+          const browser = await getBrowser();
+          const page = await browser.newPage();
+
+          try {
+            await page.setUserAgent(
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            );
+            await page.setViewport({ width: 1280, height: 720 });
+
+            await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+
+            images = await scrapeImagesRobust(page, config);
+
+            if (images.length > 0) {
+              successfulConfig = config.name;
+              console.log(
+                `✅ ${images.length} images récupérées avec ${config.name}`,
+              );
+              break;
+            }
+          } finally {
+            await page.close();
           }
-        } finally {
-          await browser.close();
+        } catch (error) {
+          console.log(`❌ Erreur avec ${config.name}: ${error}`);
         }
-      } catch (error) {
-        console.log(`❌ Erreur avec ${config.name}: ${error}`);
       }
     }
 
@@ -425,7 +498,7 @@ export async function GET(
       successfulConfig = 'demo-fallback';
     }
 
-    const result = {
+    const result: ChapterResult = {
       id: chapterId,
       mangaId,
       title: `Chapitre ${chapter.attributes.chapter}${chapter.attributes.title ? `: ${chapter.attributes.title}` : ''}`,
