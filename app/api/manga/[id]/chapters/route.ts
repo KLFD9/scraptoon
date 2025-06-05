@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import puppeteer from 'puppeteer';
-import type { Page } from 'puppeteer';
+import type { Page, Browser } from 'puppeteer';
 import { Cache } from '@/app/utils/cache';
 import { logger } from '@/app/utils/logger';
 import type {
@@ -59,23 +59,48 @@ interface Source {
   getChapters: (titleId: string, url: string) => Promise<ChaptersResult>;
 }
 
+// Navigateur réutilisé entre les appels
+let browserPromise: Promise<Browser> | null = null;
+
+async function getBrowser(): Promise<Browser> {
+  if (!browserPromise) {
+    browserPromise = puppeteer.launch({
+      headless: false,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas',
+        '--disable-gpu',
+        '--window-size=1920x1080',
+        '--disable-web-security',
+        '--disable-features=IsolateOrigins,site-per-process',
+        '--disable-blink-features=AutomationControlled'
+      ],
+      defaultViewport: null
+    });
+  }
+  return browserPromise;
+}
+
+const closeBrowser = async () => {
+  if (browserPromise) {
+    const browser = await browserPromise;
+    await browser.close();
+    browserPromise = null;
+  }
+};
+
+process.on('exit', () => {
+  void closeBrowser();
+});
+process.on('SIGINT', () => {
+  void closeBrowser().then(() => process.exit(0));
+});
+
 // Configuration du navigateur de base
 async function setupBrowser() {
-  const browser = await puppeteer.launch({
-    headless: false,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-accelerated-2d-canvas',
-      '--disable-gpu',
-      '--window-size=1920x1080',
-      '--disable-web-security',
-      '--disable-features=IsolateOrigins,site-per-process',
-      '--disable-blink-features=AutomationControlled'
-    ],
-    defaultViewport: null
-  });
+  const browser = await getBrowser();
 
   const page = await browser.newPage();
   
@@ -265,11 +290,7 @@ const webtoonSource: Source = {
   baseUrl: 'https://www.webtoons.com',
   search: async (title: string) => {
     try {
-      const browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-      });
-
+      const browser = await getBrowser();
       const page = await browser.newPage();
       await page.setViewport({ width: 1920, height: 1080 });
       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
@@ -315,7 +336,7 @@ const webtoonSource: Source = {
         return bestMatch;
       }, title);
 
-      await browser.close();
+      await page.close();
 
       if (result && result.score > 0.3) {
         logger.log('info', 'Manga trouvé sur Webtoons', { query: title });
@@ -334,11 +355,7 @@ const webtoonSource: Source = {
   },
   getChapters: async (titleId: string, url: string): Promise<ChaptersResult> => {
     try {
-      const browser = await puppeteer.launch({
-        headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
-      });
-
+      const browser = await getBrowser();
       const page = await browser.newPage();
       await page.setViewport({ width: 1920, height: 1080 });
       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
@@ -406,7 +423,7 @@ const webtoonSource: Source = {
         });
       }
 
-      await browser.close();
+      await page.close();
       logger.log('info', 'Total des chapitres trouvés', { count: allChapters.length });
 
       return {
@@ -434,7 +451,7 @@ const mangaScantradSource: Source = {
   name: 'mangascantrad',
   baseUrl: 'https://manga-scantrad.io',
   search: async (title: string) => {
-    const { browser, page } = await setupBrowser();
+    const { page } = await setupBrowser();
     
     try {
       // Formater le titre pour l'URL directe
@@ -513,11 +530,11 @@ const mangaScantradSource: Source = {
       });
       return { titleId: null, url: null };
     } finally {
-      await browser.close();
+      await page.close();
     }
   },
   getChapters: async (titleId: string, url: string): Promise<ChaptersResult> => {
-    const { browser, page } = await setupBrowser();
+    const { page } = await setupBrowser();
     
     try {
       logger.log('debug', 'Tentative d\'accès à la page des chapitres', { url });
@@ -630,7 +647,7 @@ const mangaScantradSource: Source = {
       });
       throw error;
     } finally {
-      await browser.close();
+      await page.close();
     }
   }
 };
