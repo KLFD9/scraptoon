@@ -764,9 +764,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const startTime = Date.now();
-  
+
   // Extraire l'ID du manga de manière sûre
-  const mangaId = await Promise.resolve(params?.id);
+  const { id: mangaId } = await Promise.resolve(params);
   if (!mangaId) {
     logger.log('warning', 'Requête invalide - ID manga manquant');
     return NextResponse.json(
@@ -920,7 +920,7 @@ export async function GET(
       error: error instanceof Error ? error.message : 'Erreur inconnue',
       stack: error instanceof Error ? error.stack : undefined,
       executionTime,
-      mangaId: params.id // Utiliser uniquement l'ID
+      mangaId // Utiliser uniquement l'ID
     });
     
     return NextResponse.json(
