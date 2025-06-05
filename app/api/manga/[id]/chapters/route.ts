@@ -77,7 +77,7 @@ async function setupBrowser() {
   // Configuration anti-détection
   await page.evaluateOnNewDocument(() => {
     delete Object.getPrototypeOf(navigator).webdriver;
-    // @ts-ignore
+    // @ts-expect-error -- navigator.chrome is not a standard property
     window.navigator.chrome = {
       runtime: {},
     };
@@ -240,7 +240,7 @@ async function setupBrowserWithProxy() {
   // Configuration anti-détection
   await page.evaluateOnNewDocument(() => {
     delete Object.getPrototypeOf(navigator).webdriver;
-    // @ts-ignore
+    // @ts-expect-error -- navigator.chrome is not a standard property
     window.navigator.chrome = {
       runtime: {},
     };
