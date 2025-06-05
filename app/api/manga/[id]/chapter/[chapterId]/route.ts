@@ -103,29 +103,40 @@ async function performLazyLoad(
 ): Promise<void> {
   if (!lazyConfig) {
     console.log('⚠️ Aucune configuration de lazy load fournie');
-    return;
+    return Promise.resolve();
   }
+  
   const { attribute, scrollStep = 1000, maxScrolls = 20, beforeScroll } = lazyConfig;
+  
   for (let i = 0; i < maxScrolls; i++) {
-    if (beforeScroll) {
-      await beforeScroll(page);
+    try {
+      if (beforeScroll) {
+        await beforeScroll(page);
+      }
+      
+      await page.evaluate((step: number) => {
+        window.scrollBy(0, step);
+      }, scrollStep);
+      
+      if (attribute) {
+        await page.evaluate((attr: string) => {
+          document.querySelectorAll(`img[${attr}]`).forEach(img => {
+            const el = img as HTMLImageElement;
+            const data = el.getAttribute(attr);
+            if (data && !el.src) {
+              el.src = data;
+            }
+          });
+        }, attribute);
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
+    } catch (error) {
+      console.error(`❌ Erreur lors du chargement paresseux (scroll ${i + 1}/${maxScrolls}):`, error);
     }
-    await page.evaluate((step: number) => {
-      window.scrollBy(0, step);
-    }, scrollStep);
-    if (attribute) {
-      await page.evaluate((attr: string) => {
-        document.querySelectorAll(`img[${attr}]`).forEach(img => {
-          const el = img as HTMLImageElement;
-          const data = el.getAttribute(attr);
-          if (data && !el.src) {
-            el.src = data;
-          }
-        });
-      }, attribute);
-    }
-    await new Promise(resolve => setTimeout(resolve, 500));
   }
+  
+  return Promise.resolve();
 }
 
 async function scrapeImagesRobust(
@@ -204,7 +215,7 @@ async function scrapeImagesRobust(
         return Array.from(urls);
       }, config.selectors.images);
 
-currentUrls.forEach((url: string) => {
+      currentUrls.forEach((url: string) => {
         if (!images.has(url)) {
           images.set(url, images.size + 1);
         }
@@ -218,7 +229,7 @@ currentUrls.forEach((url: string) => {
       const stepSize = config.selectors.lazyLoad?.scrollStep || 500;
 
       for (let i = 0; i < scrollSteps; i++) {
-await page.evaluate((step: number) => {
+        await page.evaluate((step: number) => {
           window.scrollTo(0, step * 500);
         }, i);
         
@@ -236,79 +247,54 @@ await page.evaluate((step: number) => {
 
       // Essayer tous les sélecteurs d'images
       for (const selector of config.selectors.images) {
-      try {
-        const imgSrcs = await page.evaluate((sel) => {
-          const elements = document.querySelectorAll(sel);
-          const sources: string[] = [];
-          
-          elements.forEach((el) => {
-            if (el instanceof HTMLImageElement) {
-              const src = el.src || el.dataset?.url || el.dataset?.src;
-              if (src && src.startsWith('http')) {
-                // Filtrer les images système (icons, logos, etc.)
-                const isSystemImage = /icon|logo|banner|avatar|profile|button|arrow|star|heart|thumb|ad|sponsor/i.test(src);
-                if (!isSystemImage && (src.includes('manga') || src.includes('chapter') || src.includes('page') || src.includes('webtoon') || src.includes('episode'))) {
-                  sources.push(src);
+        try {
+          const imgSrcs = await page.evaluate((sel) => {
+            const elements = document.querySelectorAll(sel);
+            const sources: string[] = [];
+            
+            elements.forEach((el) => {
+              if (el instanceof HTMLImageElement) {
+                const src = el.src || el.dataset?.url || el.dataset?.src;
+                if (src && src.startsWith('http')) {
+                  // Filtrer les images système (icons, logos, etc.)
+                  const isSystemImage = /icon|logo|banner|avatar|profile|button|arrow|star|heart|thumb|ad|sponsor/i.test(src);
+                  if (!isSystemImage && (src.includes('manga') || src.includes('chapter') || src.includes('page') || src.includes('webtoon') || src.includes('episode'))) {
+                    sources.push(src);
+                  }
                 }
               }
+            });
+            
+            return sources;
+          }, selector);
+
+          imgSrcs.forEach((src) => {
+            if (!images.has(src)) {
+              images.set(src, images.size + 1);
             }
           });
-          
-          return sources;
-        }, selector);
 
-        imgSrcs.forEach((src, index) => {
-          if (!images.has(src)) {
-            images.set(src, images.size + 1);
+          if (imgSrcs.length > 0) {
+            console.log(`✅ ${imgSrcs.length} images trouvées avec ${selector}`);
           }
-        });
-
-        if (imgSrcs.length > 0) {
-          console.log(`✅ ${imgSrcs.length} images trouvées avec ${selector}`);
+        } catch (error) {
+          console.log(`⚠️ Erreur avec le sélecteur ${selector}: ${error}`);
         }
-      } catch (error) {
-        console.log(`⚠️ Erreur avec le sélecteur ${selector}: ${error}`);
       }
+      
     }
-
-      // Si toujours aucune image, essayer une approche plus générique
-      if (images.size === 0) {
-        console.log('🔍 Tentative de scraping générique...');
-        
-        const genericImages = await page.evaluate(() => {
-          const allImages = Array.from(document.querySelectorAll('img[src]'));
-          const sources: string[] = [];
-          
-          allImages.forEach(img => {
-            const src = (img as HTMLImageElement).src;
-            if (src && src.startsWith('http')) {
-              const isLargeImage = (img as HTMLImageElement).naturalWidth > 200 && (img as HTMLImageElement).naturalHeight > 200;
-              const isSystemImage = /icon|logo|banner|avatar|profile|button|ad|sponsor/i.test(src);
-              
-              if (isLargeImage && !isSystemImage) {
-                sources.push(src);
-              }
-            }
-          });
-          
-          return sources;
-        });
-
-        // Ajouter les images génériques à la liste
-        genericImages.forEach(src => {
-          if (!images.has(src)) {
-            images.set(src, images.size + 1);
-          }
-        });
-
-        console.log(`🖼️ ${genericImages.length} images génériques trouvées`);
-      }
-
-      return Array.from(images.keys());
-    } catch (error) {
-      console.error(`❌ Erreur lors du scraping robuste: ${error}`);
+    
+    // Si on arrive ici, on a terminé le traitement
+    if (images.size === 0) {
+      console.log('⚠️ Aucune image trouvée avec les sélecteurs standards');
       return [];
     }
+    
+    // Retourner les URLs uniques des images
+    return Array.from(images.keys());
+  } catch (error) {
+    console.error(`❌ Erreur lors du scraping robuste: ${error}`);
+    return [];
   }
 }
 
@@ -439,7 +425,7 @@ export async function GET(
     cache.set(cacheKey, result);
 
     console.log(`✅ Scraping terminé: ${images.length} images trouvées`);
-      return NextResponse.json(result);
+    return NextResponse.json(result);
   } catch (error) {
     console.error('❌ Erreur:', error);
     return NextResponse.json(
