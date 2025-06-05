@@ -3,9 +3,18 @@ import puppeteer from 'puppeteer';
 import type { Page } from 'puppeteer';
 import { Cache } from '@/app/utils/cache';
 import { logger } from '@/app/utils/logger';
+import type {
+  MangaDexChapter,
+  MangaDexChaptersResponse
+} from '@/app/types/mangadex';
+
+// Types pour le cache des chapitres
+interface ChaptersCacheData extends ChaptersResult {
+  source: SourceInfo;
+}
 
 // Cache pour les chapitres (2 heures)
-const chaptersCache = new Cache(7200000);
+const chaptersCache = new Cache<ChaptersCacheData>(7200000);
 
 // Types pour les résultats de recherche
 interface SearchResult {
@@ -34,6 +43,12 @@ interface SourceSearchResult {
   titleId: string;
   url: string;
   sourceObj: Source;
+}
+
+interface SourceInfo {
+  name: string;
+  url: string;
+  titleId: string;
 }
 
 // Interface pour les sources
@@ -135,21 +150,25 @@ interface LogData {
   chaptersCount?: number;
   status?: number;
   statusText?: string;
-  response?: any;
+  response?: unknown;
   title?: string;
   titles?: string[];
   availableLanguages?: string[];
   source?: string;
   titleId?: string;
   totalChapters?: number;
-  firstChapter?: any;
-  lastChapter?: any;
+  firstChapter?: ChapterData;
+  lastChapter?: ChapterData;
   cacheKey?: string;
   executionTime?: number;
   maxRetries?: number;
   delay?: number;
-  blockStatus?: any;
-  params?: any;
+  blockStatus?: {
+    isBlocked: boolean;
+    hasValidContent: boolean;
+    indicators: Record<string, boolean>;
+  };
+  params?: Record<string, unknown>;
   variants?: string[];
   original?: string;
   totalPages?: number;
@@ -1019,13 +1038,13 @@ const mangadexSource: Source = {
       // Récupérer les chapitres avec pagination
       const chaptersUrl = `${mangadexSource.baseUrl}/manga/${titleId}/feed?translatedLanguage[]=fr&translatedLanguage[]=en&order[chapter]=desc&limit=500`;
       const response = await fetch(chaptersUrl);
-      const data = await response.json();
+      const data: MangaDexChaptersResponse = await response.json();
 
       if (!response.ok || !data.data?.length) {
         throw new Error('Aucun chapitre trouvé');
       }
 
-      const chapters = data.data.map((chapter: any) => ({
+      const chapters = data.data.map((chapter: MangaDexChapter) => ({
         id: chapter.id,
         chapter: `Chapitre ${chapter.attributes.chapter || 'inconnu'}`,
         title: chapter.attributes.title || null,
@@ -1269,7 +1288,11 @@ export async function GET(
   }
 }
 
-function formatResponse(data: any, page: number, limit: number) {
+function formatResponse(
+  data: ChaptersResult & { source: SourceInfo },
+  page: number,
+  limit: number
+) {
   const { chapters: allChapters, totalChapters, source } = data;
   
   // Calculer les indices pour la pagination

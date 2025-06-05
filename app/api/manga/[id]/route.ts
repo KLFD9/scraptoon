@@ -1,4 +1,12 @@
 import { NextResponse } from 'next/server';
+import type {
+  MangaDexAggregate,
+  MangaDexChaptersResponse,
+  MangaDexMangaResponse,
+  MangaDexRelationship,
+  MangaDexTag,
+  MangaDexAggregateVolume
+} from '@/app/types/mangadex';
 
 // Mapping des genres en français
 const genreTranslations: { [key: string]: string } = {
@@ -63,9 +71,9 @@ export async function GET(
       return NextResponse.json({ error: 'Manga non trouvé' }, { status: 404 });
     }
 
-    const mangaData = await mangaResponse.json();
-    const chaptersData = await chaptersResponse.json();
-    const aggregateData = await aggregateResponse.json();
+    const mangaData: MangaDexMangaResponse = await mangaResponse.json();
+    const chaptersData: MangaDexChaptersResponse = await chaptersResponse.json();
+    const aggregateData: MangaDexAggregate = await aggregateResponse.json();
 
     // Extraire les informations nécessaires
     const manga = mangaData.data;
@@ -73,20 +81,25 @@ export async function GET(
     const relationships = manga.relationships;
 
     // Trouver la couverture
-    const coverRel = relationships.find((rel: any) => rel.type === 'cover_art');
+    const coverRel = relationships.find(
+      (rel: MangaDexRelationship) => rel.type === 'cover_art'
+    );
     const coverFileName = coverRel?.attributes?.fileName || '';
 
     // Trouver l'auteur
-    const author = relationships.find((rel: any) => rel.type === 'author')?.attributes?.name;
+    const author = relationships.find(
+      (rel: MangaDexRelationship) => rel.type === 'author'
+    )?.attributes?.name;
 
     // Calculer le nombre de chapitres et les chapitres français
     let totalChapters = 0;
     let frenchChapters = 0;
 
     if (aggregateData.volumes) {
-      Object.values(aggregateData.volumes).forEach((volume: any) => {
+      const volumes = aggregateData.volumes as Record<string, MangaDexAggregateVolume>;
+      Object.values(volumes).forEach((volume) => {
         if (volume.chapters) {
-          Object.values(volume.chapters).forEach((chapter: any) => {
+          Object.values(volume.chapters).forEach((chapter) => {
             totalChapters++;
             if (chapter.translatedLanguage === 'fr') {
               frenchChapters++;
@@ -117,8 +130,8 @@ export async function GET(
 
     // Extraire et traduire les genres
     const genres = attributes.tags
-      .filter((tag: any) => tag.group === 'genre')
-      .map((tag: any) => {
+      .filter((tag: MangaDexTag) => tag.group === 'genre')
+      .map((tag: MangaDexTag) => {
         const genreName = tag.name.en.toLowerCase();
         return genreTranslations[genreName] || tag.name.fr || tag.name.en;
       });
