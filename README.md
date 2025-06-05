@@ -54,3 +54,53 @@ When you open a chapter, a progress bar at the top indicates how many pages have
 finished loading compared to the total number of pages. This helps you monitor
 the loading status as you read
 and relies on the `pageCount`/`pages` values returned by the API.
+
+## Project Setup
+
+### Installation
+
+Install dependencies after cloning the repository:
+
+```bash
+npm install
+```
+
+### Environment variables
+
+Create a `.env.local` file to configure your Redis instance. The application uses `REDIS_URL`, falling back to `redis://localhost:6379` if not provided:
+
+```bash
+# .env.local
+REDIS_URL=redis://localhost:6379
+```
+
+## Testing
+
+### Integration script
+
+Run the provided script to check chapter reading and API responses:
+
+```bash
+bash test-reading.sh
+```
+
+Ensure the development server is running (`npm run dev`) so the script can reach `http://localhost:3001`.
+
+### Vitest suite
+
+Execute unit tests with [Vitest](https://vitest.dev):
+
+```bash
+npx vitest
+```
+
+## Contributing
+
+Before committing, lint the project and check for vulnerabilities:
+
+```bash
+npm run lint
+npm audit
+```
+
+Use the commit message format `<type>(<scope>): <description>` (e.g. `feat(reader): add lazy loading`). Allowed types are `feat`, `fix`, `docs`, `style`, `refactor`, `test`, and `chore`.
