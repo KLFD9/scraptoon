@@ -119,10 +119,10 @@ export async function GET(
 
     // Extraire la vidéo YouTube des liens externes
     let videoUrl = null;
-    if (attributes.links) {
-      const youtubeLink = Object.entries(attributes.links).find(([key, value]) => 
-        typeof value === 'string' && (value.includes('youtube.com') || value.includes('youtu.be'))
-      );
+      if (attributes.links) {
+        const youtubeLink = Object.entries(attributes.links).find(([, value]) =>
+          typeof value === 'string' && (value.includes('youtube.com') || value.includes('youtu.be'))
+        );
       if (youtubeLink) {
         videoUrl = youtubeLink[1];
       }

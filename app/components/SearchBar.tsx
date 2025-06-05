@@ -1,6 +1,6 @@
 'use client';
 
-import { Search, Clock, X } from 'lucide-react';
+import { Search, Clock } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 
 interface SearchBarProps {

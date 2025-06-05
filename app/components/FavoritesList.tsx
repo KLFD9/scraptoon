@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { FavoriteManga, ReadingStatus } from '../types/manga';
 import { Heart, BookOpen, BookX, CheckCircle, Edit3, Trash2, Filter, BarChart2, Search, Calendar, Clock, ArrowUpDown, Star, Info } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { BookOpen, BookX, CheckCircle, Edit3, Trash2, Filter, BarChart2, Search, Clock, ArrowUpDown, Info } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
@@ -177,7 +178,7 @@ export default function FavoritesList({
                 onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
                 className="text-sm border rounded-full px-3 py-1.5 bg-transparent focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600"
               >
-                <option value="date">Date d'ajout</option>
+                <option value="date">Date d&apos;ajout</option>
                 <option value="title">Titre</option>
                 <option value="chapters">Chapitres</option>
                 <option value="lastUpdated">Dernière lecture</option>
