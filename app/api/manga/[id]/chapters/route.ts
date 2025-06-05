@@ -6,13 +6,7 @@ import { logger } from '@/app/utils/logger';
 
 // Cache pour les chapitres (2 heures)
 const chaptersCache = new Cache(7200000);
-
-// Types pour les résultats de recherche
-interface SearchResult {
-  titleId: string;
-  url: string;
-  score: number;
-}
+const chaptersCache = new Cache<ChaptersResult>(7200000);
 
 interface ChapterData {
   id: string;
@@ -23,11 +17,16 @@ interface ChapterData {
   source: string;
 }
 
+
 interface ChaptersResult {
   chapters: ChapterData[];
   totalChapters: number;
+  source: {
+    name: string;
+    url: string;
+    titleId: string;
+  };
 }
-
 
 interface SourceSearchResult {
   source: string;
@@ -41,17 +40,7 @@ interface Source {
   name: string;
   baseUrl: string;
   search: (title: string) => Promise<{ titleId: string | null; url: string | null }>;
-  getChapters: (titleId: string, url: string) => Promise<{
-    chapters: Array<{
-      id: string;
-      chapter: string;
-      title: string | null;
-      publishedAt: string | null;
-      url: string;
-      source: string;
-    }>;
-    totalChapters: number;
-  }>;
+  getChapters: (titleId: string, url: string) => Promise<ChaptersResult>;
 }
 
 // Configuration du navigateur de base
@@ -119,6 +108,7 @@ async function setupBrowser() {
   return { browser, page };
 }
 
+
 // Mise à jour de l'interface LogData
 interface LogData {
   error?: string;
@@ -135,21 +125,31 @@ interface LogData {
   chaptersCount?: number;
   status?: number;
   statusText?: string;
-  response?: any;
+  response?: unknown;
   title?: string;
   titles?: string[];
   availableLanguages?: string[];
   source?: string;
   titleId?: string;
   totalChapters?: number;
-  firstChapter?: any;
-  lastChapter?: any;
+  firstChapter?: ChapterData;
+  lastChapter?: ChapterData;
   cacheKey?: string;
   executionTime?: number;
   maxRetries?: number;
   delay?: number;
   blockStatus?: any;
   params?: any;
+
+  blockStatus?: {
+    isBlocked: boolean;
+    hasValidContent: boolean;
+    indicators: Record<string, boolean>;
+  };
+  params?: Record<string, unknown>;
+  variants?: string[];
+  original?: string;
+
   totalPages?: number;
   count?: number;
   variant?: string;
@@ -165,6 +165,32 @@ interface LogData {
     hasValidContent: boolean;
     errors: Record<string, boolean>;
   };
+
+  proxyInfo?: {
+    ip: string;
+    country: string;
+    status: string;
+  };
+}
+
+
+// Fonction pour obtenir un proxy aléatoire
+async function getRandomProxy(): Promise<string | null> {
+  try {
+    // Liste de proxies gratuits (à remplacer par des proxies payants pour la production)
+    const proxyList = [
+      'fr1.proxy.example.com:8080',
+      'fr2.proxy.example.com:8080',
+      'fr3.proxy.example.com:8080'
+    ];
+    
+    return proxyList[Math.floor(Math.random() * proxyList.length)];
+  } catch (error) {
+    logger.log('error', 'Erreur lors de la récupération du proxy', {
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+    return null;
+  }
 }
 
 
@@ -374,7 +400,7 @@ const webtoonSource: Source = {
       return { titleId: null, url: null };
     }
   },
-  getChapters: async (titleId: string, url: string) => {
+  getChapters: async (titleId: string, url: string): Promise<ChaptersResult> => {
     try {
       const browser = await puppeteer.launch({
         headless: true,
@@ -554,7 +580,7 @@ const mangaScantradSource: Source = {
       await browser.close();
     }
   },
-  getChapters: async (titleId: string, url: string) => {
+  getChapters: async (titleId: string, url: string): Promise<ChaptersResult> => {
     const { browser, page } = await setupBrowser();
     
     try {
@@ -704,9 +730,9 @@ const mangadexSource: Source = {
       return { titleId: null, url: null };
     }
   },
-  getChapters: async (titleId: string, url: string) => {
+  getChapters: async (titleId: string, url: string): Promise<ChaptersResult> => {
     try {
-      logger.log('info', 'Récupération des chapitres depuis MangaDex', { titleId });
+      logger.log('info', 'Récupération des chapitres depuis MangaDex', { titleId, url });
 
       // Récupérer les chapitres avec pagination
       const chaptersUrl = `${mangadexSource.baseUrl}/manga/${titleId}/feed?translatedLanguage[]=fr&translatedLanguage[]=en&order[chapter]=desc&limit=500`;

@@ -4,7 +4,7 @@ import { Cache } from '@/app/utils/cache';
 
 // Cache multi-niveaux (mémoire + Redis) pour les résultats (5 minutes)
 const CACHE_DURATION = 5 * 60 * 1000;
-const cache = new Cache(CACHE_DURATION);
+const cache = new Cache<Manga[]>(CACHE_DURATION);
 
 export async function POST(request: Request) {
   try {

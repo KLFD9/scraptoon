@@ -24,7 +24,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fr">
-      <body suppressHydrationWarning={true}>
+      <body
+        suppressHydrationWarning={true}
+        className={`${geistSans.variable} ${geistMono.variable} font-sans`}
+      >
         {children}
       </body>
     </html>
