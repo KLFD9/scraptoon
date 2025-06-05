@@ -1,6 +1,7 @@
 import { Manga } from '@/app/types/manga';
 import { logger } from '@/app/utils/logger';
 import { Cache } from '@/app/utils/cache';
+import { RateLimiter } from '@/app/utils/rateLimiter';
 import type {
   MangaDexChaptersResponse,
   MangaDexManga,
@@ -12,21 +13,44 @@ import type {
 // Cache multi-niveaux (mémoire + Redis) pour les résultats (5 minutes)
 const CACHE_DURATION = 5 * 60 * 1000;
 const cache = new Cache<Manga[]>(CACHE_DURATION);
+const rateLimiter = new RateLimiter(30, 60_000);
+
+const fetchHttps = (url: string, options?: RequestInit) => {
+  if (!url.startsWith('https://')) {
+    throw new Error('Les requ\u00eates externes doivent utiliser HTTPS');
+  }
+  return fetch(url, options);
+};
 
 export async function POST(request: Request) {
   try {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'global';
+
+    if (!rateLimiter.canMakeRequest(ip)) {
+      return Response.json({
+        success: false,
+        error: 'Trop de requ\u00eates, veuillez patienter.'
+      }, { status: 429 });
+    }
+
     const { searchQuery } = await request.json();
     
     if (!searchQuery) {
       throw new Error('Requête de recherche invalide');
     }
 
+    const sanitizedQuery = searchQuery.replace(/[^a-zA-Z0-9\s'-]/g, '').trim();
+
+    if (!sanitizedQuery) {
+      throw new Error('Requête de recherche invalide');
+    }
+
     // Vérification du cache
-    const cacheKey = searchQuery.toLowerCase();
+    const cacheKey = sanitizedQuery.toLowerCase();
     const cachedData = await cache.get(cacheKey);
     if (cachedData) {
       logger.log('info', 'Résultats retournés depuis le cache', {
-        query: searchQuery,
+        query: sanitizedQuery,
         resultsCount: cachedData.length
       });
       return Response.json({
@@ -41,7 +65,7 @@ export async function POST(request: Request) {
     }
 
     logger.log('debug', 'Début de la recherche', {
-      query: searchQuery,
+      query: sanitizedQuery,
       timestamp: new Date().toISOString()
     });
 
@@ -49,7 +73,7 @@ export async function POST(request: Request) {
     const params = new URLSearchParams();
     
     // Paramètres de base
-    params.append('title', searchQuery);
+    params.append('title', sanitizedQuery);
     params.append('limit', '20');
     params.append('offset', '0');
     
@@ -80,7 +104,7 @@ export async function POST(request: Request) {
     const url = `https://api.mangadex.org/manga?${params.toString()}`;
     logger.log('debug', 'URL de recherche', { url });
 
-    const response = await fetch(url, {
+    const response = await fetchHttps(url, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -121,7 +145,7 @@ export async function POST(request: Request) {
           : 0;
 
         // Récupération des chapitres traduits
-        const chaptersResponse = await fetch(
+        const chaptersResponse = await fetchHttps(
           `https://api.mangadex.org/manga/${manga.id}/feed?limit=0&translatedLanguage[]=fr&includes[]=scanlation_group&order[chapter]=desc`
         );
         const chaptersData: MangaDexChaptersResponse = await chaptersResponse.json();
@@ -200,7 +224,7 @@ export async function POST(request: Request) {
     await cache.set(cacheKey, results);
 
     logger.log('info', 'Recherche réussie', {
-      query: searchQuery,
+      query: sanitizedQuery,
       resultsCount: results.length,
       titles: results.map(r => r.title)
     });

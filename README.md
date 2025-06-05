@@ -47,7 +47,12 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Asynchronous API routes with proper parameter handling.
 - Timestamped error logs for easier debugging.
 - Unified API response with `pageCount` and `pages` array.
+
 - Chapter images fetched via the MangaDex API with cached results (fallback to scraping).
+
+- Rate limiter on `/api/scraper` prevents abusive calls.
+- Search queries are sanitized and only HTTPS requests are allowed.
+
 
 ## Usage
 
