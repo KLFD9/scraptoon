@@ -3,9 +3,8 @@
 import { Suspense } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ChevronLeft, ChevronRight, List, Settings, BookOpen } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, List, Settings } from 'lucide-react';
 import ChapterReader from '@/app/components/ChapterReader';
-import Layout from '@/app/components/Layout';
 
 interface ChapterData {
   title: string;
@@ -16,6 +15,11 @@ interface ChapterData {
   pages: string[];
   source: string;
   scrapingTime: string;
+}
+
+interface Chapter {
+  id: string;
+  title?: string;
 }
 
 function ChapterReaderContent() {
@@ -29,7 +33,7 @@ function ChapterReaderContent() {
   const [error, setError] = useState<string | null>(null);
   const [showHeader, setShowHeader] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [allChapters, setAllChapters] = useState<any[]>([]);
+  const [allChapters, setAllChapters] = useState<Chapter[]>([]);
   const [currentChapterIndex, setCurrentChapterIndex] = useState(-1);
 
   useEffect(() => {
@@ -48,7 +52,7 @@ function ChapterReaderContent() {
           const chaptersData = await chaptersResponse.json();
           if (chaptersData.chapters) {
             setAllChapters(chaptersData.chapters);
-            const currentIndex = chaptersData.chapters.findIndex((ch: any) => ch.id === chapterId);
+            const currentIndex = chaptersData.chapters.findIndex((ch: Chapter) => ch.id === chapterId);
             setCurrentChapterIndex(currentIndex);
           }
         }
@@ -176,7 +180,7 @@ function ChapterReaderContent() {
             Chapitre non trouvé
           </h1>
           <p className="text-gray-300 mb-4">
-            Le chapitre que vous recherchez n'existe pas ou n'est plus disponible.
+            Le chapitre que vous recherchez n&apos;existe pas ou n&apos;est plus disponible.
           </p>
           <button
             onClick={goBackToManga}
