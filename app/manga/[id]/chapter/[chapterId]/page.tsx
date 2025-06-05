@@ -272,9 +272,8 @@ function ChapterReaderContent() {
 
       {/* Contenu principal avec le reader */}
       <div className={`${showHeader ? 'pt-16' : 'pt-0'} transition-all duration-300`}>
-        <ChapterReader 
+        <ChapterReader
           pages={chapterData.pages}
-          title={chapterData.title || ''}
           chapter={chapterData.chapter}
           mangaTitle={chapterData.mangaTitle}
           onPageChange={(page) => {
