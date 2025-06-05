@@ -49,6 +49,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Unified API response with `pageCount` and `pages` array.
 - Stronger type safety with explicit interfaces replacing `any`.
 - Logger interface cleaned up to remove duplicate fields.
+- Header visibility responds to scroll direction while reading.
 
 - Chapter images fetched via the MangaDex API with cached results (fallback to scraping).
 
