@@ -39,7 +39,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ## Features
 
-- Chapter reader with lazy-loaded images.
+- Chapter reader with lazy-loaded images, blurred placeholders and preloaded next pages.
 - Improved scraping logic using custom lazy-load steps.
 - Fixed image aspect ratio warnings using explicit style attributes.
 - Hook `useChapterNavigation` to manage chapter navigation.
