@@ -166,19 +166,23 @@ function MangaContent() {
               {/* Back button + Title */}
               <div className="flex items-center gap-3">
                 <button 
-                  onClick={() => router.back()}
+                  onClick={() => router.push('/')}
                   className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+                  title="Retour à l'accueil"
                 >
                   <ArrowLeft className="w-5 h-5 text-white" />
                 </button>
-                <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => router.push('/')}
+                  className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+                >
                   <div className="w-7 h-7 bg-white rounded-md flex items-center justify-center">
                     <BookOpen className="w-4 h-4 text-gray-950" />
                   </div>
                   <h1 className="text-lg font-semibold text-white truncate max-w-xs sm:max-w-md">
-                    {manga.title}
+                    Woons
                   </h1>
-                </div>
+                </button>
               </div>
 
               {/* Actions */}

@@ -71,15 +71,18 @@ export default function Home() {
           <header className="sticky top-0 z-50 bg-gray-950/95 backdrop-blur-sm border-b border-gray-800">
             <div className="max-w-7xl mx-auto px-4 py-4">
               <div className="flex items-center justify-between gap-4">
-                {/* Brand */}
-                <div className="flex items-center gap-3 flex-shrink-0">
+                {/* Brand - Cliquable pour retourner à l'accueil */}
+                <button 
+                  onClick={() => window.location.href = '/'}
+                  className="flex items-center gap-3 flex-shrink-0 hover:opacity-80 transition-opacity"
+                >
                   <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
                     <BookOpen className="w-5 h-5 text-gray-950" />
                   </div>
                   <h1 className="text-xl font-semibold text-white">
-                    ScrapToon
+                    Woons
                   </h1>
-                </div>
+                </button>
 
                 {/* Search Bar - Desktop */}
                 <div className="hidden md:flex flex-1 max-w-2xl mx-8">

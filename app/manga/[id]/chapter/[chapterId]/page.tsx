@@ -279,7 +279,7 @@ function ChapterReaderContent() {
 
               {/* Boutons utilitaires */}
               <button
-                onClick={() => {/* TODO: Implémenter la liste des chapitres */}}
+                onClick={goBackToManga}
                 className="p-2 hover:bg-white/10 rounded-full transition-colors"
                 title="Liste des chapitres"
               >
