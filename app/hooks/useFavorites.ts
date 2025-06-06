@@ -4,13 +4,14 @@ import { Manga, FavoriteManga, ReadingStatus } from '../types/manga';
 const FAVORITES_KEY = 'mangaScraper_favorites';
 
 export function useFavorites() {
-  const [favorites, setFavorites] = useState<FavoriteManga[]>(() => {
+  const [favorites, setFavorites] = useState<FavoriteManga[]>([]);
+
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(FAVORITES_KEY);
-      return saved ? JSON.parse(saved) : [];
+      setFavorites(saved ? JSON.parse(saved) : []);
     }
-    return [];
-  });
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {

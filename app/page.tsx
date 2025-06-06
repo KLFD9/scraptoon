@@ -18,13 +18,14 @@ const MAX_HISTORY_ITEMS = 5;
 export default function Home() {
   const [results, setResults] = useState<Manga[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchHistory, setSearchHistory] = useState<string[]>(() => {
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('searchHistory');
-      return saved ? JSON.parse(saved) : [];
+      setSearchHistory(saved ? JSON.parse(saved) : []);
     }
-    return [];
-  });
+  }, []);
 
   const { favorites } = useFavorites();
 
