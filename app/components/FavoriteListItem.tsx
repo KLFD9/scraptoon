@@ -77,144 +77,121 @@ export default function FavoriteListItem({
   };
 
   return (
-    <div className="group relative bg-gray-900/30 hover:bg-gray-900/50 rounded-xl p-4 border border-gray-800/50 hover:border-gray-700/50 transition-all duration-300">
-      <div className="flex items-center gap-4">
-        {/* Couverture */}
-        <div className="relative w-16 h-20 flex-shrink-0 cursor-pointer" onClick={handleMangaClick}>
+    <div className="group relative bg-gray-900/20 hover:bg-gray-900/40 rounded-lg py-2 px-3 border border-gray-800/30 hover:border-gray-700/50 transition-all duration-200">
+      <div className="flex items-center gap-3">
+        {/* Couverture - Très petite */}
+        <div className="relative w-8 h-10 flex-shrink-0 cursor-pointer" onClick={handleMangaClick}>
           <Image
             src={manga.cover}
             alt={manga.title}
             fill
-            className="object-cover rounded-lg transition-transform duration-300 hover:scale-105"
-            sizes="64px"
+            className="object-cover rounded transition-transform duration-200 hover:scale-105"
+            sizes="32px"
           />
         </div>
 
-        {/* Informations principales */}
+        {/* Informations principales - Ultra compactes */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-3 mb-2">
-            <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <div className="flex-1 min-w-0 pr-2">
               <h3 
-                className="font-semibold text-white text-base mb-1 line-clamp-1 cursor-pointer hover:text-blue-400 transition-colors"
+                className="font-medium text-white text-sm line-clamp-1 cursor-pointer hover:text-blue-400 transition-colors"
                 onClick={handleMangaClick}
+                title={manga.title}
               >
                 {manga.title}
               </h3>
               
-              {manga.author && (
-                <p className="text-sm text-gray-400 line-clamp-1 mb-1">{manga.author}</p>
-              )}
-
-              <div className="flex items-center gap-3 flex-wrap">
-                {/* Badge de statut */}
-                {manga.readingStatus && getStatusBadge(manga.readingStatus)}
-                
-                {/* Info chapitres */}
-                {manga.chapterCount?.total && (
-                  <div className="flex items-center gap-1 text-xs text-gray-500">
-                    <BookOpen className="w-3 h-3" />
-                    {manga.chapterCount.total} chapitre{manga.chapterCount.total > 1 ? 's' : ''}
-                  </div>
+              <div className="flex items-center gap-2 mt-0.5">
+                {manga.author && (
+                  <span className="text-xs text-gray-500 line-clamp-1" title={manga.author}>
+                    {manga.author}
+                  </span>
                 )}
-
-                {/* Date d'ajout */}
-                <div className="flex items-center gap-1 text-xs text-gray-500">
-                  <Calendar className="w-3 h-3" />
-                  Ajouté le {formatDate(manga.addedAt)}
-                </div>
+                
+                {manga.chapterCount?.total && (
+                  <span className="text-xs text-gray-600">
+                    • {manga.chapterCount.total} ch.
+                  </span>
+                )}
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {/* Bouton continuer la lecture */}
+            {/* Actions compactes */}
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              {manga.readingStatus && (
+                <span className={`px-1.5 py-0.5 text-xs rounded-full ${
+                  manga.readingStatus === 'reading' ? 'bg-blue-500/20 text-blue-400' :
+                  manga.readingStatus === 'completed' ? 'bg-green-500/20 text-green-400' :
+                  'bg-gray-500/20 text-gray-400'
+                }`}>
+                  {manga.readingStatus === 'reading' ? '📖' : 
+                   manga.readingStatus === 'completed' ? '✓' : '📚'}
+                </span>
+              )}
+              
               {progress && (
                 <button
                   onClick={handleContinueReading}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg text-xs font-medium transition-colors"
+                  className="p-1 rounded bg-blue-600/20 text-blue-400 hover:bg-blue-600/30 transition-colors"
                   title="Continuer la lecture"
                 >
-                  <Play className="w-3 h-3 fill-current" />
-                  Ch. {progress.chapterNumber}
-                  {progress.language && (
-                    <span className="ml-1">{getLanguageFlag(progress.language)}</span>
-                  )}
+                  <Play className="w-3 h-3" />
                 </button>
               )}
 
-              {/* Menu options */}
-              <div className="relative">
-                <button
-                  onClick={() => setActiveMenu(!activeMenu)}
-                  className="p-2 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
-                >
-                  <MoreHorizontal className="w-4 h-4" />
-                </button>
-                
-                {activeMenu && (
-                  <div className="absolute top-full right-0 mt-1 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-20 overflow-hidden">
-                    <div className="py-1">
-                      <button
-                        onClick={() => {
-                          setEditingNote(true);
+              <button
+                onClick={() => setActiveMenu(!activeMenu)}
+                className="p-1 rounded text-gray-500 hover:text-gray-300 hover:bg-gray-800/50 transition-colors"
+              >
+                <MoreHorizontal className="w-3 h-3" />
+              </button>
+              
+              {/* Menu dropdown */}
+              {activeMenu && (
+                <div className="absolute top-full right-0 mt-1 w-40 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-20 overflow-hidden">
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        setEditingNote(true);
+                        setActiveMenu(false);
+                      }}
+                      className="w-full px-3 py-1.5 text-xs text-left text-gray-300 hover:bg-gray-800 flex items-center gap-2"
+                    >
+                      <Edit3 className="w-3 h-3" />
+                      {manga.notes ? 'Modifier note' : 'Ajouter note'}
+                    </button>
+                    
+                    <div className="px-3 py-1.5">
+                      <select
+                        value={manga.readingStatus || 'to-read'}
+                        onChange={(e) => {
+                          onUpdateStatus(manga.id, e.target.value as ReadingStatus);
                           setActiveMenu(false);
                         }}
-                        className="w-full px-3 py-2 text-sm text-left text-gray-300 hover:bg-gray-800 flex items-center gap-2"
+                        className="w-full text-xs bg-gray-800 border border-gray-600 rounded text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       >
-                        <Edit3 className="w-4 h-4" />
-                        {manga.notes ? 'Modifier la note' : 'Ajouter une note'}
-                      </button>
-                      
-                      <div className="px-3 py-2">
-                        <select
-                          value={manga.readingStatus || 'to-read'}
-                          onChange={(e) => {
-                            onUpdateStatus(manga.id, e.target.value as ReadingStatus);
-                            setActiveMenu(false);
-                          }}
-                          className="w-full text-sm bg-gray-800 border border-gray-600 rounded text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        >
-                          <option value="to-read">À lire</option>
-                          <option value="reading">En cours</option>
-                          <option value="completed">Terminé</option>
-                        </select>
-                      </div>
-                      
-                      <button
-                        onClick={() => {
-                          onRemove(manga.id);
-                          setActiveMenu(false);
-                        }}
-                        className="w-full px-3 py-2 text-sm text-left text-red-400 hover:bg-red-500/10 flex items-center gap-2"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Retirer des favoris
-                      </button>
+                        <option value="to-read">À lire</option>
+                        <option value="reading">En cours</option>
+                        <option value="completed">Terminé</option>
+                      </select>
                     </div>
+                    
+                    <button
+                      onClick={() => {
+                        onRemove(manga.id);
+                        setActiveMenu(false);
+                      }}
+                      className="w-full px-3 py-1.5 text-xs text-left text-red-400 hover:bg-red-500/10 flex items-center gap-2"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      Retirer
+                    </button>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
-
-          {/* Note si présente */}
-          {manga.notes && !editingNote && (
-            <div className="bg-gray-800/30 rounded-lg p-3 mt-2">
-              <p className="text-sm text-gray-400 italic">
-                "{manga.notes}"
-              </p>
-            </div>
-          )}
-
-          {/* Progression de lecture si disponible */}
-          {progress && (
-            <div className="mt-2 text-xs text-gray-500">
-              Dernière lecture : chapitre {progress.chapterNumber}
-              {progress.language && ` (${progress.language.toUpperCase()})`}
-              {' • '}
-              {formatDate(progress.lastReadAt)}
-            </div>
-          )}
         </div>
       </div>
 
