@@ -42,6 +42,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Chapter reader with lazy-loaded images.
 - Improved scraping logic using custom lazy-load steps.
 - Fixed image aspect ratio warnings using explicit style attributes.
+- Blur placeholder ensures images reserve their space and fade in smoothly.
 - Hook `useChapterNavigation` to manage chapter navigation.
 - Progress indicator showing loaded pages vs total while reading.
 - Asynchronous API routes with proper parameter handling.
@@ -112,6 +113,7 @@ Before committing, lint the project and check for vulnerabilities:
 ```bash
 npm run lint
 npm audit
+npx vitest run
 ```
 
 Use the commit message format `<type>(<scope>): <description>` (e.g. `feat(reader): add lazy loading`). Allowed types are `feat`, `fix`, `docs`, `style`, `refactor`, `test`, and `chore`.
