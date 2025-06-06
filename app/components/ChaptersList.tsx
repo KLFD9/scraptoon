@@ -13,6 +13,7 @@ interface Chapter {
   publishedAt: string | null;
   url: string;
   source: string;
+  language?: string; // Code langue ISO (fr, en, ja, etc.)
 }
 
 interface Pagination {
@@ -43,17 +44,74 @@ interface ChaptersListProps {
 
 type SortOption = 'newest' | 'oldest' | 'chapter-asc' | 'chapter-desc';
 
+// Fonction pour obtenir le drapeau à partir du code langue
+function getLanguageFlag(languageCode?: string): string {
+  if (!languageCode) return '🌐'; // Drapeau générique si pas de langue
+  
+  const flags: Record<string, string> = {
+    'fr': '🇫🇷',
+    'en': '🇺🇸',
+    'ja': '🇯🇵',
+    'ko': '🇰🇷',
+    'zh': '🇨🇳',
+    'es': '🇪🇸',
+    'de': '🇩🇪',
+    'it': '🇮🇹',
+    'pt': '🇵🇹',
+    'ru': '🇷🇺',
+    'ar': '🇸🇦',
+    'tr': '🇹🇷',
+    'th': '🇹🇭',
+    'vi': '🇻🇳',
+    'id': '🇮🇩',
+    'ms': '🇲🇾',
+    'tl': '🇵🇭',
+    'hi': '🇮🇳',
+  };
+  
+  return flags[languageCode.toLowerCase()] || '🌐';
+}
+
+// Fonction pour obtenir le nom de la langue
+function getLanguageName(languageCode?: string): string {
+  if (!languageCode) return 'Inconnu';
+  
+  const names: Record<string, string> = {
+    'fr': 'Français',
+    'en': 'English',
+    'ja': '日本語',
+    'ko': '한국어',
+    'zh': '中文',
+    'es': 'Español',
+    'de': 'Deutsch',
+    'it': 'Italiano',
+    'pt': 'Português',
+    'ru': 'Русский',
+    'ar': 'العربية',
+    'tr': 'Türkçe',
+    'th': 'ไทย',
+    'vi': 'Tiếng Việt',
+    'id': 'Bahasa Indonesia',
+    'ms': 'Bahasa Malaysia',
+    'tl': 'Filipino',
+    'hi': 'हिन्दी',
+  };
+  
+  return names[languageCode.toLowerCase()] || languageCode.toUpperCase();
+}
+
 export default function ChaptersList({ mangaId }: ChaptersListProps) {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [sortBy, setSortBy] = useState<SortOption>('chapter-asc');
 
-  const fetchChapters = useCallback(async (page: number) => {
+  const fetchChapters = useCallback(async (page: number, sort?: SortOption) => {
     try {
       setIsLoading(true);
-      const url = `/api/manga/${mangaId}/chapters?page=${page}`;
+      const sortParam = sort || sortBy;
+      const url = `/api/manga/${mangaId}/chapters?page=${page}&sort=${sortParam}`;
       const response = await fetch(url);
       const data: ChaptersResponse = await response.json();
 
@@ -68,11 +126,11 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
     } finally {
       setIsLoading(false);
     }
-  }, [mangaId]);
+  }, [mangaId, sortBy]);
 
   useEffect(() => {
     fetchChapters(1);
-  }, [mangaId, fetchChapters]);
+  }, [mangaId, fetchChapters, sortBy]);
 
   const handlePageChange = (newPage: number) => {
     if (pagination && newPage >= 1 && newPage <= pagination.totalPages) {
@@ -80,28 +138,10 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
     }
   };
 
-  const sortChapters = (chapters: Chapter[]) => {
-    const sorted = [...chapters];
-    switch (sortBy) {
-      case 'newest':
-        return sorted.sort((a, b) => {
-          const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
-          const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
-          return dateB - dateA;
-        });
-      case 'oldest':
-        return sorted.sort((a, b) => {
-          const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
-          const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
-          return dateA - dateB;
-        });
-      case 'chapter-asc':
-        return sorted.sort((a, b) => parseFloat(a.chapter) - parseFloat(b.chapter));
-      case 'chapter-desc':
-        return sorted.sort((a, b) => parseFloat(b.chapter) - parseFloat(a.chapter));
-      default:
-        return sorted;
-    }
+  const handleSortChange = (newSort: SortOption) => {
+    setSortBy(newSort);
+    // Retourner à la page 1 lors du changement de tri
+    fetchChapters(1, newSort);
   };
 
   if (error) {
@@ -126,7 +166,7 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
             <div className="flex items-center gap-2">
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortOption)}
+                onChange={(e) => handleSortChange(e.target.value as SortOption)}
                 className="text-sm bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-gray-300 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-gray-600 transition-colors"
               >
                 <option value="newest">Plus récents</option>
@@ -156,25 +196,36 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
         <div>
           {/* Liste des chapitres */}
           <div className="divide-y divide-gray-800">
-            {sortChapters(chapters).map((chapter) => (
+            {chapters.map((chapter) => (
               <Link
                 key={chapter.id}
                 href={`/manga/${mangaId}/chapter/${chapter.id}`}
                 className="block p-4 hover:bg-gray-800 transition-colors"
               >
                 <div className="flex justify-between items-center">
-                  <div>
-                    <h3 className="text-base font-medium text-white">
-                      Chapitre {chapter.chapter}
-                      {chapter.title && ` - ${chapter.title}`}
-                    </h3>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <h3 className="text-base font-medium text-white">
+                        Chapitre {chapter.chapter}
+                        {chapter.title && ` - ${chapter.title}`}
+                      </h3>
+                      {chapter.language && (
+                        <span 
+                          className="flex items-center gap-1 text-xs bg-gray-800 px-2 py-1 rounded"
+                          title={getLanguageName(chapter.language)}
+                        >
+                          <span className="text-sm">{getLanguageFlag(chapter.language)}</span>
+                          <span className="text-gray-400 uppercase">{chapter.language}</span>
+                        </span>
+                      )}
+                    </div>
                     {chapter.publishedAt && (
                       <p className="text-sm text-gray-400 mt-1">
                         {new Date(chapter.publishedAt).toLocaleDateString('fr-FR')}
                       </p>
                     )}
                   </div>
-                  <div className="text-gray-500">
+                  <div className="text-gray-500 ml-4">
                     <ChevronRight className="w-5 h-5" />
                   </div>
                 </div>
@@ -272,4 +323,4 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
       )}
     </div>
   );
-} 
+}

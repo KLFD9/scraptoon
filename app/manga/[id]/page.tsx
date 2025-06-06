@@ -7,6 +7,7 @@ import { Manga } from '@/app/types/manga';
 import Image from 'next/image';
 import { BookOpen, Star, Users, ArrowLeft, BookmarkPlus, Play, Share2, QrCode, Bookmark } from 'lucide-react';
 import { useFavorites } from '@/app/hooks/useFavorites';
+import { useReadingProgress } from '@/app/hooks/useReadingProgress';
 import Layout from '@/app/components/Layout';
 import { extractShortSynopsis } from '@/app/components/SynopsisContent';
 import ChaptersList from '@/app/components/ChaptersList';
@@ -22,7 +23,11 @@ function MangaContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [firstChapterId, setFirstChapterId] = useState<string | null>(null);
+  const [allChapters, setAllChapters] = useState<any[]>([]);
+  const [readingButtonText, setReadingButtonText] = useState('Commencer la lecture');
+  const [targetChapterId, setTargetChapterId] = useState<string | null>(null);
   const { addToFavorites, removeFromFavorites, isFavorite } = useFavorites();
+  const { readingProgress } = useReadingProgress();
   const [isInFavorites, setIsInFavorites] = useState(false);
 
   useEffect(() => {
@@ -49,12 +54,53 @@ function MangaContent() {
         setManga(data);
         setIsInFavorites(isFavorite(mangaId));
         
-        // Récupérer le premier chapitre pour le bouton "Commencer la lecture"
+        // Récupérer tous les chapitres pour analyser la progression
         try {
-          const chaptersResponse = await fetch(`/api/manga/${mangaId}/chapters?page=1`);
+          const chaptersResponse = await fetch(`/api/manga/${mangaId}/chapters?all=true`);
           const chaptersData = await chaptersResponse.json();
           if (chaptersResponse.ok && chaptersData.chapters && chaptersData.chapters.length > 0) {
-            setFirstChapterId(chaptersData.chapters[0].id);
+            const chapters = chaptersData.chapters;
+            setAllChapters(chapters);
+            
+            // Vérifier s'il y a une progression de lecture pour ce manga
+            const currentProgress = readingProgress.find(p => p.mangaId === mangaId);
+            
+            // Trouver le premier chapitre (chapitre 1 ou le plus ancien)
+            const sortedChapters = [...chapters].sort((a, b) => {
+              // Essayer de trier par numéro de chapitre extrait du titre
+              const aChapterText = a.chapter || '';
+              const bChapterText = b.chapter || '';
+              
+              // Extraire les numéros de chapitre (gérer Episode 1, Chapitre 1, etc.)
+              const aNum = parseFloat(aChapterText.replace(/[^\d.]/g, ''));
+              const bNum = parseFloat(bChapterText.replace(/[^\d.]/g, ''));
+              
+              // Si on a des numéros valides, trier par numéro
+              if (!isNaN(aNum) && !isNaN(bNum)) {
+                return aNum - bNum;
+              }
+              
+              // Fallback : trier par date de publication (plus ancien en premier)
+              const aDate = new Date(a.publishedAt || '1970-01-01');
+              const bDate = new Date(b.publishedAt || '1970-01-01');
+              return aDate.getTime() - bDate.getTime();
+            });
+            
+            const firstChapter = sortedChapters[0];
+            
+            if (firstChapter) {
+              setFirstChapterId(firstChapter.id);
+              
+              if (currentProgress) {
+                // L'utilisateur a déjà commencé ce manga
+                setReadingButtonText(`Continuer chapitre ${currentProgress.chapterNumber}`);
+                setTargetChapterId(currentProgress.chapterId);
+              } else {
+                // Nouveau manga : commencer au chapitre 1
+                setTargetChapterId(firstChapter.id);
+                setReadingButtonText('Commencer la lecture');
+              }
+            }
           }
         } catch (error) {
           logger.log('error', 'fetch chapters failed', { error: String(error) });
@@ -71,7 +117,7 @@ function MangaContent() {
       fetchMangaDetails();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mangaId]);
+  }, [mangaId, readingProgress]);
 
   const handleFavoriteClick = () => {
     if (!manga) return;
@@ -281,19 +327,33 @@ function MangaContent() {
               </div>
 
               {/* Action Button */}
-              <div>
+              <div className="space-y-3">
                 <button
                   className="w-full sm:w-auto px-6 py-2.5 bg-white text-gray-950 rounded-lg font-medium hover:bg-gray-100 transition-colors flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
                   onClick={() => {
-                    if (firstChapterId) {
-                      router.push(`/manga/${mangaId}/chapter/${firstChapterId}`);
+                    if (targetChapterId) {
+                      router.push(`/manga/${mangaId}/chapter/${targetChapterId}`);
                     }
                   }}
-                  disabled={!firstChapterId}
+                  disabled={!targetChapterId}
                 >
                   <Play className="w-4 h-4" />
-                  {firstChapterId ? 'Commencer la lecture' : 'Chapitres non disponibles'}
+                  {targetChapterId ? readingButtonText : 'Chapitres non disponibles'}
                 </button>
+                
+                {/* Bouton "Recommencer" si l'utilisateur a déjà une progression */}
+                {readingProgress.find(p => p.mangaId === mangaId) && firstChapterId && firstChapterId !== targetChapterId && (
+                  <button
+                    className="w-full sm:w-auto px-4 py-2 border border-gray-600 text-gray-300 rounded-lg font-medium hover:bg-gray-800 hover:text-white transition-colors flex items-center justify-center gap-2"
+                    onClick={() => {
+                      if (firstChapterId) {
+                        router.push(`/manga/${mangaId}/chapter/${firstChapterId}`);
+                      }
+                    }}
+                  >
+                    Recommencer depuis le début
+                  </button>
+                )}
               </div>
             </div>
           </div>

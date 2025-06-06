@@ -26,6 +26,7 @@ interface ChapterData {
   publishedAt: string | null;
   url: string;
   source: string;
+  language?: string; // Code langue ISO (fr, en, ja, etc.)
 }
 
 
@@ -799,6 +800,8 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
     const limit = Math.max(1, parseInt(searchParams.get('limit') || '10'));
+    const getAll = searchParams.get('all') === 'true';
+    const sortBy = searchParams.get('sort') || 'chapter-asc';
 
     logger.log('debug', 'Paramètres de pagination', {
       page,
@@ -815,7 +818,18 @@ export async function GET(
         mangaId,
         chaptersCount: cachedData.chapters.length
       });
-      return formatResponse(cachedData, page, limit);
+      
+      // Si on demande tous les chapitres, retourner sans pagination mais avec tri
+      if (getAll) {
+        const sortedChapters = sortChapters(cachedData.chapters, sortBy);
+        return NextResponse.json({
+          chapters: sortedChapters,
+          totalChapters: cachedData.totalChapters,
+          source: cachedData.source
+        });
+      }
+      
+      return formatResponse(cachedData, page, limit, sortBy);
     }
 
     logger.log('debug', 'Récupération des informations depuis MangaDex', {
@@ -919,7 +933,21 @@ export async function GET(
       cacheKey
     });
 
-    const response = formatResponse(resultData, page, limit);
+    // Si on demande tous les chapitres, retourner sans pagination mais avec tri
+    if (getAll) {
+      const sortedChapters = sortChapters(allChapters, sortBy);
+      return NextResponse.json({
+        chapters: sortedChapters,
+        totalChapters,
+        source: {
+          name: firstSource.source,
+          url: firstSource.url,
+          titleId: firstSource.titleId
+        }
+      });
+    }
+
+    const response = formatResponse(resultData, page, limit, sortBy);
     const executionTime = Date.now() - startTime;
     
     logger.log('info', 'Requête terminée avec succès', {
@@ -952,19 +980,80 @@ export async function GET(
   }
 }
 
+function sortChapters(chapters: ChapterData[], sortBy: string = 'chapter-asc'): ChapterData[] {
+  const sorted = [...chapters];
+  switch (sortBy) {
+    case 'newest':
+      return sorted.sort((a, b) => {
+        const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+        const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+        return dateB - dateA;
+      });
+    case 'oldest':
+      return sorted.sort((a, b) => {
+        const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+        const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+        return dateA - dateB;
+      });
+    case 'chapter-desc':
+      return sorted.sort((a, b) => {
+        // Extraire les numéros de chapitre plus intelligemment
+        const aChapterText = a.chapter || '';
+        const bChapterText = b.chapter || '';
+        
+        const aNum = parseFloat(aChapterText.replace(/[^\d.]/g, ''));
+        const bNum = parseFloat(bChapterText.replace(/[^\d.]/g, ''));
+        
+        // Si on a des numéros valides, trier par numéro (décroissant)
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+          return bNum - aNum;
+        }
+        
+        // Fallback : tri par date (plus récent en premier)
+        const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+        const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+        return dateB - dateA;
+      });
+    case 'chapter-asc':
+    default:
+      return sorted.sort((a, b) => {
+        // Extraire les numéros de chapitre plus intelligemment
+        const aChapterText = a.chapter || '';
+        const bChapterText = b.chapter || '';
+        
+        const aNum = parseFloat(aChapterText.replace(/[^\d.]/g, ''));
+        const bNum = parseFloat(bChapterText.replace(/[^\d.]/g, ''));
+        
+        // Si on a des numéros valides, trier par numéro
+        if (!isNaN(aNum) && !isNaN(bNum)) {
+          return aNum - bNum;
+        }
+        
+        // Fallback : tri par date (plus ancien en premier)
+        const dateA = a.publishedAt ? new Date(a.publishedAt).getTime() : 0;
+        const dateB = b.publishedAt ? new Date(b.publishedAt).getTime() : 0;
+        return dateA - dateB;
+      });
+  }
+}
+
 function formatResponse(
   data: ChaptersResult & { source: SourceInfo },
   page: number,
-  limit: number
+  limit: number,
+  sortBy: string = 'chapter-asc'
 ) {
   const { chapters: allChapters, totalChapters, source } = data;
+  
+  // Trier AVANT la pagination
+  const sortedChapters = sortChapters(allChapters, sortBy);
   
   // Calculer les indices pour la pagination
   const startIndex = (page - 1) * limit;
   const endIndex = startIndex + limit;
   
   // Extraire les chapitres pour la page courante
-  const paginatedChapters = allChapters.slice(startIndex, endIndex);
+  const paginatedChapters = sortedChapters.slice(startIndex, endIndex);
 
   // Calculer le nombre total de pages
   const totalPages = Math.ceil(totalChapters / limit);

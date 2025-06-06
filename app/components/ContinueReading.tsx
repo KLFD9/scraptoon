@@ -7,6 +7,34 @@ import { Play, X, Clock } from 'lucide-react';
 
 const DEFAULT_COVER = '/images/default-cover.svg';
 
+// Fonction pour obtenir le drapeau à partir du code langue
+function getLanguageFlag(languageCode?: string): string {
+  if (!languageCode) return '🌐'; // Drapeau générique si pas de langue
+  
+  const flags: Record<string, string> = {
+    'fr': '🇫🇷',
+    'en': '🇺🇸',
+    'ja': '🇯🇵',
+    'ko': '🇰🇷',
+    'zh': '🇨🇳',
+    'es': '🇪🇸',
+    'de': '🇩🇪',
+    'it': '🇮🇹',
+    'pt': '🇵🇹',
+    'ru': '🇷🇺',
+    'ar': '🇸🇦',
+    'tr': '🇹🇷',
+    'th': '🇹🇭',
+    'vi': '🇻🇳',
+    'id': '🇮🇩',
+    'ms': '🇲🇾',
+    'tl': '🇵🇭',
+    'hi': '🇮🇳',
+  };
+  
+  return flags[languageCode.toLowerCase()] || '🌐';
+}
+
 export default function ContinueReading() {
   const { readingProgress, removeFromReadingProgress } = useReadingProgress();
 
@@ -77,9 +105,16 @@ export default function ContinueReading() {
                 {/* Badge chapitre */}
                 <div className="absolute bottom-2 left-2 right-2">
                   <div className="bg-black/80 backdrop-blur-sm rounded-md px-2 py-1">
-                    <p className="text-white text-xs font-medium truncate">
-                      Ch. {item.chapterNumber}
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-white text-xs font-medium truncate">
+                        Ch. {item.chapterNumber}
+                      </p>
+                      {item.language && (
+                        <span className="text-xs ml-1">
+                          {getLanguageFlag(item.language)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

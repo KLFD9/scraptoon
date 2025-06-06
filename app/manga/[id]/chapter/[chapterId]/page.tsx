@@ -104,7 +104,8 @@ function ChapterReaderContent() {
             chapterId,
             data.chapter,
             data.mangaTitle,
-            coverUrl
+            coverUrl,
+            data.language
           );
         }
       } catch (error) {

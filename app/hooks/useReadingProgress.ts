@@ -8,6 +8,7 @@ interface ReadingProgress {
   mangaTitle: string;
   mangaCover?: string;
   lastReadAt: string;
+  language?: string; // Code langue ISO (fr, en, ja, etc.)
 }
 
 export function useReadingProgress() {
@@ -39,7 +40,8 @@ export function useReadingProgress() {
     chapterId: string,
     chapterNumber: string,
     mangaTitle: string,
-    mangaCover?: string
+    mangaCover?: string,
+    language?: string
   ) => {
     const newProgress: ReadingProgress = {
       mangaId,
@@ -47,6 +49,7 @@ export function useReadingProgress() {
       chapterNumber,
       mangaTitle,
       mangaCover,
+      language,
       lastReadAt: new Date().toISOString()
     };
 
