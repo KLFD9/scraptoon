@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { ChevronUp } from 'lucide-react'
+import { logger } from '@/app/utils/logger'
 
 interface ChapterReaderProps {
   pages: string[]
@@ -71,7 +72,7 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({ pages, chapter, mangaTitl
   }
 
   const handleImageError = (index: number) => {
-    console.error(`Erreur de chargement de l'image ${index + 1}`)
+    logger.log('error', `Image ${index + 1} failed to load`, { index })
     setImageErrors(prev => new Set(prev.add(index)))
   }
 

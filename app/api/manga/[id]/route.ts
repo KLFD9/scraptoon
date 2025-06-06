@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { Cache } from '@/app/utils/cache';
+import { logger } from '@/app/utils/logger';
 import type {
   MangaDexAggregate,
   MangaDexChaptersResponse,
@@ -189,7 +190,10 @@ export async function GET(
     await mangaCache.set(mangaId, formattedManga);
     return NextResponse.json(formattedManga);
   } catch (error) {
-    console.error('Erreur lors de la récupération des détails du manga:', error);
+    logger.log('error', 'failed to fetch manga details', {
+      error: String(error),
+      mangaId
+    });
     return NextResponse.json(
       { error: 'Erreur lors de la récupération des détails du manga' },
       { status: 500 }

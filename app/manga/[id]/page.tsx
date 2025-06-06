@@ -10,6 +10,7 @@ import { useFavorites } from '@/app/hooks/useFavorites';
 import Layout from '@/app/components/Layout';
 import { extractShortSynopsis } from '@/app/components/SynopsisContent';
 import ChaptersList from '@/app/components/ChaptersList';
+import { logger } from '@/app/utils/logger';
 
 const DEFAULT_COVER = '/images/default-cover.jpg';
 
@@ -56,7 +57,7 @@ function MangaContent() {
             setFirstChapterId(chaptersData.chapters[0].id);
           }
         } catch (error) {
-          console.error('Erreur lors de la récupération des chapitres:', error);
+          logger.log('error', 'fetch chapters failed', { error: String(error) });
         }
       } catch (error) {
         setError(error instanceof Error ? error.message : 'Une erreur est survenue');
@@ -84,7 +85,7 @@ function MangaContent() {
       setIsInFavorites(!isInFavorites);
     } catch (error) {
       // Afficher une notification d'erreur si nécessaire
-      console.error('Erreur lors de la gestion des favoris:', error);
+      logger.log('error', 'favorites management failed', { error: String(error) });
     }
   };
 

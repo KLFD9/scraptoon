@@ -1,4 +1,5 @@
 import puppeteer from 'puppeteer';
+import { logger } from './logger';
 
 export interface DiagnosticResult {
   url: string;
@@ -230,7 +231,7 @@ export async function batchDiagnose(testCases: Array<{
       // Pause entre les requêtes
       await new Promise(resolve => setTimeout(resolve, 2000));
     } catch (error) {
-      console.error(`Erreur lors du diagnostic de ${testCase.name}:`, error);
+      logger.log('error', `diagnostic failed for ${testCase.name}`, { error: String(error), url: testCase.url });
       results.push({
         url: testCase.url,
         name: testCase.name,

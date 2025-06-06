@@ -1,4 +1,5 @@
 import { getRedisClient } from './redisClient';
+import { logger } from './logger';
 
 interface CacheEntry<T> {
   data: T;
@@ -19,7 +20,7 @@ export class Cache<T = unknown> {
       const client = await getRedisClient();
       await client.setEx(key, Math.floor(this.ttl / 1000), JSON.stringify(data));
     } catch (err) {
-      console.error('Redis set error', err);
+      logger.log('error', 'Redis set error', { error: String(err), key });
     }
   }
 
@@ -40,7 +41,7 @@ export class Cache<T = unknown> {
         return data;
       }
     } catch (err) {
-      console.error('Redis get error', err);
+      logger.log('error', 'Redis get error', { error: String(err), key });
     }
     return null;
   }
