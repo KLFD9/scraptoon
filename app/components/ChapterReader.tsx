@@ -120,9 +120,9 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({ pages, chapter, mangaTitl
                 <Image
                   src={url}
                   alt={`Page ${index + 1} - ${mangaTitle} - Chapitre ${chapter}`}
-                  width={800} // Adjust as per your design needs
-                  height={1200} // Adjust as per your design needs
-                  className={`max-w-full h-auto ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-500`}
+                  fill
+                  sizes="100vw"
+                  className={`object-contain ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-500`}
                   onLoad={() => handleImageLoad(index)}
                   onError={() => handleImageError(index)}
                   loading={index < 2 ? 'eager' : 'lazy'} // Conditionally set loading based on priority
