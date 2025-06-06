@@ -10,6 +10,7 @@ import ClientOnly from './components/ClientOnly';
 import { scrapeManga } from './services/scraping.service';
 import { useFavorites } from './hooks/useFavorites';
 import { BookmarkPlus } from 'lucide-react';
+import { logger } from '@/app/utils/logger';
 
 const MAX_HISTORY_ITEMS = 5;
 
@@ -50,7 +51,7 @@ export default function Home() {
         return newHistory;
       });
     } catch (error) {
-      console.error('Erreur:', error);
+      logger.log('error', 'search failed', { error: String(error), query });
     } finally {
       setLoading(false);
     }

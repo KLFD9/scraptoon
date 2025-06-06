@@ -1,4 +1,5 @@
 import { getRedisClient } from './redisClient';
+import { logger } from './logger';
 
 interface CacheEntry<T> {
   data: T;
@@ -13,17 +14,28 @@ export class Cache<T = unknown> {
     this.ttl = ttl;
   }
 
+  private pruneExpired(): void {
+    const now = Date.now();
+    for (const [key, entry] of Object.entries(this.memoryCache)) {
+      if (now - entry.timestamp > this.ttl) {
+        delete this.memoryCache[key];
+      }
+    }
+  }
+
   async set(key: string, data: T): Promise<void> {
+    this.pruneExpired();
     this.memoryCache[key] = { data, timestamp: Date.now() };
     try {
       const client = await getRedisClient();
       await client.setEx(key, Math.floor(this.ttl / 1000), JSON.stringify(data));
     } catch (err) {
-      console.error('Redis set error', err);
+      logger.log('error', 'Redis set error', { error: String(err), key });
     }
   }
 
   async get(key: string): Promise<T | null> {
+    this.pruneExpired();
     const entry = this.memoryCache[key];
     if (entry && Date.now() - entry.timestamp <= this.ttl) {
       return entry.data;
@@ -40,7 +52,7 @@ export class Cache<T = unknown> {
         return data;
       }
     } catch (err) {
-      console.error('Redis get error', err);
+      logger.log('error', 'Redis get error', { error: String(err), key });
     }
     return null;
   }

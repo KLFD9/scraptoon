@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { Page } from 'puppeteer';
 import puppeteer from 'puppeteer';
+import { logger } from '@/app/utils/logger';
 
 // Fonction pour récupérer les vraies images depuis MangaDex
 async function getMangaDexChapterImages(chapterId: string): Promise<string[]> {
@@ -236,7 +237,7 @@ async function scrapeImages(page: Page, config: ScrapingConfig): Promise<string[
     }
 
   } catch (error) {
-    console.error('❌ Erreur lors du scraping:', error);
+    logger.log('error', 'scraping error', { error: String(error) });
     return [];
   }
 }
@@ -308,7 +309,7 @@ async function scrapeWebtoons(page: Page): Promise<string[]> {
     console.log(`✅ Webtoons: ${images.size} images trouvées`);
     
   } catch (error) {
-    console.error('❌ Erreur scraping Webtoons:', error);
+    logger.log('error', 'webtoons scraping error', { error: String(error) });
   }
   
   return Array.from(images);
@@ -383,7 +384,7 @@ async function scrapeGeneric(page: Page, config: ScrapingConfig): Promise<string
     }
     
   } catch (error) {
-    console.error('❌ Erreur scraping générique:', error);
+    logger.log('error', 'generic scraping error', { error: String(error) });
   }
   
   return Array.from(images);
@@ -523,7 +524,9 @@ export async function GET(
             break;
           }
         } catch (error) {
-          console.error(`❌ Échec avec ${config.name}:`, error);
+          logger.log('error', `scraping attempt failed for ${config.name}`, {
+            error: String(error)
+          });
           continue;
         }
       }
@@ -600,7 +603,7 @@ export async function GET(
     }
 
   } catch (error) {
-    console.error('❌ Erreur:', error);
+    logger.log('error', 'route error', { error: String(error) });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Erreur inconnue' },
       { status: 500 }

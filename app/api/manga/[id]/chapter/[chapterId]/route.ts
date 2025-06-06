@@ -3,6 +3,7 @@ import type { Page, Browser } from 'puppeteer';
 import { launchBrowser } from '@/app/utils/launchBrowser';
 import { Cache } from '@/app/utils/cache';
 import { retry } from '@/app/utils/retry';
+import { logger } from '@/app/utils/logger';
 
 
 // Préférer l'API MangaDex puis basculer sur Puppeteer en secours
@@ -46,10 +47,10 @@ async function getMangaDexChapterImages(
     const images = data.chapter.data as string[];
     return images.map((file) => `${baseUrl}/data/${hash}/${file}`);
   } catch (error) {
-    console.error(
-      `${new Date().toISOString()} ❌ MangaDex fetch error:`,
-      error,
-    );
+    logger.log('error', 'MangaDex fetch error', {
+      error: String(error),
+      chapterId
+    });
     return [];
   }
 }
@@ -202,7 +203,11 @@ async function performLazyLoad(
       
       await new Promise(resolve => setTimeout(resolve, 500));
     } catch (error) {
-      console.error(`${new Date().toISOString()} ❌ Erreur lors du chargement paresseux (scroll ${i + 1}/${maxScrolls}):`, error);
+      logger.log('error', 'lazy load scroll error', {
+        error: String(error),
+        scroll: i + 1,
+        maxScrolls
+      });
     }
   }
   
@@ -367,7 +372,7 @@ async function scrapeImagesRobust(
     // Retourner les URLs uniques des images
     return Array.from(images.keys());
   } catch (error) {
-    console.error(`${new Date().toISOString()} ❌ Erreur lors du scraping robuste: ${error}`);
+    logger.log('error', 'robust scraping error', { error: String(error) });
     return [];
   }
 }
@@ -515,7 +520,11 @@ export async function GET(
     console.log(`✅ Scraping terminé: ${images.length} images trouvées`);
     return NextResponse.json(result);
   } catch (error) {
-    console.error(`${new Date().toISOString()} ❌ Erreur:`, error);
+    logger.log('error', 'chapter retrieval error', {
+      error: String(error),
+      chapterId,
+      mangaId: params.id
+    });
     return NextResponse.json(
       { error: 'Erreur lors de la récupération du chapitre', details: String(error) },
       { status: 500 }

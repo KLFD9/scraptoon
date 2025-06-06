@@ -1,4 +1,5 @@
 import { batchDiagnose, generateOptimalSelectors, type DiagnosticResult } from '../utils/scraping-diagnostics';
+import { logger } from '../utils/logger';
 
 async function testScrapingConfigs() {
   console.log('🔍 Diagnostic des configurations de scraping...\n');
@@ -73,7 +74,7 @@ async function testScrapingConfigs() {
     generateUpdatedConfig(results);
 
   } catch (error) {
-    console.error('❌ Erreur lors du diagnostic:', error);
+    logger.log('error', 'diagnostic run error', { error: String(error) });
   }
 }
 
@@ -116,7 +117,11 @@ function generateUpdatedConfig(results: DiagnosticTestResult[]) {
 
 // Execution si lancé directement
 if (require.main === module) {
-  testScrapingConfigs().catch(console.error);
+  testScrapingConfigs().catch(error =>
+    logger.log('error', 'Unhandled error in testScrapingConfigs', {
+      error: String(error)
+    })
+  );
 }
 
 export { testScrapingConfigs };

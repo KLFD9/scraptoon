@@ -47,6 +47,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Progress indicator showing loaded pages vs total while reading.
 - Asynchronous API routes with proper parameter handling.
 - Timestamped error logs for easier debugging.
+- Consistent `logger.log('error')` calls replace `console.error` for structured logging.
 - Unified API response with `pageCount` and `pages` array.
 - Stronger type safety with explicit interfaces replacing `any`.
 - Logger interface cleaned up to remove duplicate fields.
@@ -60,6 +61,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Rate limiter on `/api/scraper` prevents abusive calls.
 - Search queries are sanitized and only HTTPS requests are allowed.
 - MangaDex API requests automatically retry up to three times on network errors.
+- In-memory cache automatically prunes expired entries to limit memory usage.
 
 
 ## Usage
