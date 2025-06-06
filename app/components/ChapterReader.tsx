@@ -16,6 +16,8 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({ pages, chapter, mangaTitl
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set())
   const [imageErrors, setImageErrors] = useState<Set<number>>(new Set())
   const [isUIVisible, setIsUIVisible] = useState(true)
+  const blurDataURL =
+    'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMSIgaGVpZ2h0PSIxIiBmaWxsPSIjY2NjY2NjIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciLz4='
   const lastScrollY = useRef(0)
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -36,12 +38,27 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({ pages, chapter, mangaTitl
     }
   }, [handleScroll])
 
-  const handlePageChange = useCallback((page: number) => {
-    if (page !== currentPage) {
-      setCurrentPage(page)
-      onPageChange?.(page)
-    }
-  }, [currentPage, onPageChange])
+  const preloadNextImage = useCallback(
+    (index: number) => {
+      const nextIndex = index + 1
+      if (nextIndex < pages.length && !loadedImages.has(nextIndex)) {
+        const img = new window.Image()
+        img.src = pages[nextIndex]
+      }
+    },
+    [pages, loadedImages]
+  )
+
+  const handlePageChange = useCallback(
+    (page: number) => {
+      if (page !== currentPage) {
+        setCurrentPage(page)
+        onPageChange?.(page)
+        preloadNextImage(page - 1)
+      }
+    },
+    [currentPage, onPageChange, preloadNextImage]
+  )
 
   const handleImageLoad = (index: number) => {
     setLoadedImages(prev => new Set(prev.add(index)))
@@ -83,7 +100,7 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({ pages, chapter, mangaTitl
           const isLoaded = loadedImages.has(index)
           const hasError = imageErrors.has(index)
           return (
-            <div key={url} data-index={index} className="relative flex justify-center bg-black"> {/* Ensure background is black */}
+            <div key={url} data-index={index} className="relative flex justify-center bg-black" style={{ minHeight: 1200 }}> {/* Ensure background is black */}
               {hasError ? (
                 <div className="bg-gray-800 text-white p-8 text-center rounded-lg w-full h-[60vh] flex flex-col justify-center items-center">
                   <p>Erreur de chargement de l&apos;image {index + 1}</p>
@@ -98,8 +115,9 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({ pages, chapter, mangaTitl
                   className={`max-w-full h-auto ${isLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-500`}
                   onLoad={() => handleImageLoad(index)}
                   onError={() => handleImageError(index)}
-                  loading={index < 2 ? "eager" : "lazy"} // Conditionally set loading based on priority
-                  unoptimized // If images are from external sources and already optimized
+                  loading={index < 2 ? 'eager' : 'lazy'} // Conditionally set loading based on priority
+                  placeholder="blur"
+                  blurDataURL={blurDataURL}
                   priority={index < 2} // Prioritize loading first few images
                 />
               )}
