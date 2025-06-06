@@ -3,6 +3,7 @@ import { launchBrowser } from '@/app/utils/launchBrowser';
 import type { Page, Browser } from 'puppeteer';
 import { Cache } from '@/app/utils/cache';
 import { logger } from '@/app/utils/logger';
+import { retry } from '@/app/utils/retry';
 import type {
   MangaDexChapter,
   MangaDexChaptersResponse
@@ -657,7 +658,7 @@ const mangadexSource: Source = {
       logger.log('info', 'Recherche sur MangaDex API', { query: title });
       
       const searchUrl = `${mangadexSource.baseUrl}/manga?title=${encodeURIComponent(title)}&limit=5&order[relevance]=desc`;
-      const response = await fetch(searchUrl);
+      const response = await retry(() => fetch(searchUrl), 3, 1000);
       const data = await response.json();
 
       if (!response.ok || !data.data?.length) {
@@ -690,7 +691,7 @@ const mangadexSource: Source = {
 
       // Récupérer les chapitres avec pagination
       const chaptersUrl = `${mangadexSource.baseUrl}/manga/${titleId}/feed?translatedLanguage[]=fr&translatedLanguage[]=en&order[chapter]=desc&limit=500`;
-      const response = await fetch(chaptersUrl);
+      const response = await retry(() => fetch(chaptersUrl), 3, 1000);
       const data: MangaDexChaptersResponse = await response.json();
 
       if (!response.ok || !data.data?.length) {
@@ -822,8 +823,13 @@ export async function GET(
     });
 
     // Récupérer les infos du manga depuis MangaDex
-    const mangaResponse = await fetch(
-      `https://api.mangadex.org/manga/${mangaId}?includes[]=title`
+    const mangaResponse = await retry(
+      () =>
+        fetch(
+          `https://api.mangadex.org/manga/${mangaId}?includes[]=title`
+        ),
+      3,
+      1000,
     );
     const mangaData = await mangaResponse.json();
     

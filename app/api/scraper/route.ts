@@ -2,6 +2,7 @@ import { Manga } from '@/app/types/manga';
 import { logger } from '@/app/utils/logger';
 import { Cache } from '@/app/utils/cache';
 import { RateLimiter } from '@/app/utils/rateLimiter';
+import { retry } from '@/app/utils/retry';
 import type {
   MangaDexChaptersResponse,
   MangaDexManga,
@@ -104,12 +105,17 @@ export async function POST(request: Request) {
     const url = `https://api.mangadex.org/manga?${params.toString()}`;
     logger.log('debug', 'URL de recherche', { url });
 
-    const response = await fetchHttps(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      }
-    });
+    const response = await retry(
+      () =>
+        fetchHttps(url, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          }
+        }),
+      3,
+      1000,
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -145,8 +151,13 @@ export async function POST(request: Request) {
           : 0;
 
         // Récupération des chapitres traduits
-        const chaptersResponse = await fetchHttps(
-          `https://api.mangadex.org/manga/${manga.id}/feed?limit=0&translatedLanguage[]=fr&includes[]=scanlation_group&order[chapter]=desc`
+        const chaptersResponse = await retry(
+          () =>
+            fetchHttps(
+              `https://api.mangadex.org/manga/${manga.id}/feed?limit=0&translatedLanguage[]=fr&includes[]=scanlation_group&order[chapter]=desc`
+            ),
+          3,
+          1000,
         );
         const chaptersData: MangaDexChaptersResponse = await chaptersResponse.json();
         

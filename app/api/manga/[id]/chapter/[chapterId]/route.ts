@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { Page, Browser } from 'puppeteer';
 import { launchBrowser } from '@/app/utils/launchBrowser';
 import { Cache } from '@/app/utils/cache';
+import { retry } from '@/app/utils/retry';
 import { logger } from '@/app/utils/logger';
 
 
@@ -26,8 +27,13 @@ async function getMangaDexChapterImages(
   chapterId: string,
 ): Promise<string[]> {
   try {
-    const res = await fetch(
-      `https://api.mangadex.org/at-home/server/${encodeURIComponent(chapterId)}`,
+    const res = await retry(
+      () =>
+        fetch(
+          `https://api.mangadex.org/at-home/server/${encodeURIComponent(chapterId)}`,
+        ),
+      3,
+      1000,
     );
     if (!res.ok) {
       console.log(
@@ -392,8 +398,13 @@ export async function GET(
     console.log(`🔍 Lecture du chapitre ${chapterId}`);
 
     // Récupérer les infos du manga depuis l'API MangaDex
-    const mangaResponse = await fetch(
-      `https://api.mangadex.org/manga/${encodeURIComponent(mangaId)}?includes[]=author&includes[]=artist&includes[]=cover_art`,
+    const mangaResponse = await retry(
+      () =>
+        fetch(
+          `https://api.mangadex.org/manga/${encodeURIComponent(mangaId)}?includes[]=author&includes[]=artist&includes[]=cover_art`,
+        ),
+      3,
+      1000,
     );
     
     if (!mangaResponse.ok) {
@@ -404,8 +415,13 @@ export async function GET(
     const manga = mangaData.data;
     
     // Récupérer les infos du chapitre
-    const chapterResponse = await fetch(
-      `https://api.mangadex.org/chapter/${encodeURIComponent(chapterId)}?includes[]=scanlation_group&includes[]=user`,
+    const chapterResponse = await retry(
+      () =>
+        fetch(
+          `https://api.mangadex.org/chapter/${encodeURIComponent(chapterId)}?includes[]=scanlation_group&includes[]=user`,
+        ),
+      3,
+      1000,
     );
     
     if (!chapterResponse.ok) {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { Cache } from '@/app/utils/cache';
+import { retry } from '@/app/utils/retry';
 import { logger } from '@/app/utils/logger';
 import type {
   MangaDexAggregate,
@@ -91,9 +92,9 @@ export async function GET(
 
     // Récupérer les données du manga
     const [mangaResponse, chaptersResponse, aggregateResponse] = await Promise.all([
-      fetch(mangaUrl),
-      fetch(chaptersUrl),
-      fetch(aggregateUrl)
+      retry(() => fetch(mangaUrl), 3, 1000),
+      retry(() => fetch(chaptersUrl), 3, 1000),
+      retry(() => fetch(aggregateUrl), 3, 1000)
     ]);
 
     if (!mangaResponse.ok) {
