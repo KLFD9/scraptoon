@@ -38,15 +38,21 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({ pages, chapter, mangaTitl
     }
   }, [handleScroll])
 
-  const preloadNextImage = useCallback(
+  const preloadedIndicesRef = useRef<Set<number>>(new Set())
+
+  const preloadUpcomingImages = useCallback(
     (index: number) => {
-      const nextIndex = index + 1
-      if (nextIndex < pages.length && !loadedImages.has(nextIndex)) {
-        const img = new window.Image()
-        img.src = pages[nextIndex]
+      const start = index + 1
+      const end = Math.min(start + 5, pages.length)
+      for (let i = start; i < end; i += 1) {
+        if (!preloadedIndicesRef.current.has(i)) {
+          const img = new window.Image()
+          img.src = pages[i]
+          preloadedIndicesRef.current.add(i)
+        }
       }
     },
-    [pages, loadedImages]
+    [pages]
   )
 
   const handlePageChange = useCallback(
@@ -54,10 +60,10 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({ pages, chapter, mangaTitl
       if (page !== currentPage) {
         setCurrentPage(page)
         onPageChange?.(page)
-        preloadNextImage(page - 1)
+        preloadUpcomingImages(page - 1)
       }
     },
-    [currentPage, onPageChange, preloadNextImage]
+    [currentPage, onPageChange, preloadUpcomingImages]
   )
 
   const handleImageLoad = (index: number) => {
@@ -68,6 +74,10 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({ pages, chapter, mangaTitl
     console.error(`Erreur de chargement de l'image ${index + 1}`)
     setImageErrors(prev => new Set(prev.add(index)))
   }
+
+  useEffect(() => {
+    preloadUpcomingImages(-1)
+  }, [preloadUpcomingImages])
 
   useEffect(() => {
     const observer = new IntersectionObserver(
