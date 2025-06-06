@@ -66,6 +66,10 @@ export interface LogData {
     country: string;
     status: string;
   };
+  // Additional properties for better logging
+  index?: number;
+  chapterId?: string;
+  redisUrl?: string;
 }
 
 export const logger = {

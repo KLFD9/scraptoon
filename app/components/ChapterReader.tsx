@@ -98,10 +98,7 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({ pages, chapter, mangaTitl
   }
 
   const handleImageError = (index: number) => {
-
     logger.log('error', `Image ${index + 1} failed to load`, { index })
-    setImageErrors(prev => new Set(prev.add(index)))
-    console.error(`Erreur de chargement de l'image ${index + 1}`)
     setImageErrors(prev => {
       const newSet = new Set(prev)
       newSet.add(index)
