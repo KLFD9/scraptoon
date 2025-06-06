@@ -1,4 +1,5 @@
 import { chromium, Browser } from 'playwright';
+import { logger } from './logger';
 
 interface ContainerInfo {
   selector: string;
@@ -101,7 +102,7 @@ export class SiteAnalyzer {
       return analysis;
 
     } catch (error) {
-      console.error('❌ Erreur lors de l\'analyse Webtoons:', error);
+      logger.log('error', 'Webtoons analysis failed', { error: String(error) });
       return null;
     } finally {
       await page.close();
@@ -170,7 +171,7 @@ export class SiteAnalyzer {
       return analysis;
 
     } catch (error) {
-      console.error('❌ Erreur lors de l\'analyse Reaper-Scans:', error);
+      logger.log('error', 'Reaper-Scans analysis failed', { error: String(error) });
       return null;
     } finally {
       await page.close();
@@ -222,7 +223,7 @@ async function main() {
     }
     
   } catch (error) {
-    console.error('❌ Erreur générale:', error);
+    logger.log('error', 'site analyzer error', { error: String(error) });
   } finally {
     await analyzer.close();
   }

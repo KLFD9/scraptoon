@@ -1,4 +1,5 @@
 import { createClient, RedisClientType } from 'redis';
+import { logger } from './logger';
 
 const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 
@@ -14,8 +15,7 @@ export async function getRedisClient(): Promise<RedisClientType> {
     });
     
     client.on('error', err => {
-      console.error('Redis Client Error:', err);
-      console.error('Redis URL:', redisUrl);
+      logger.log('error', 'Redis client error', { error: String(err), redisUrl });
     });
     
     client.on('connect', () => {
@@ -35,7 +35,7 @@ export async function testRedisConnection(): Promise<boolean> {
     console.log('Redis connection test: SUCCESS');
     return true;
   } catch (error) {
-    console.error('Redis connection test: FAILED', error);
+    logger.log('error', 'Redis connection test failed', { error: String(error) });
     return false;
   }
 }

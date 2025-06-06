@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { diagnoseScrapingSelectors } from '../../utils/scraping-diagnostics';
+import { logger } from '../../utils/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(response);
 
   } catch (error) {
-    console.error('❌ Erreur lors du diagnostic:', error);
+    logger.log('error', 'diagnostic api error', { error: String(error) });
     return NextResponse.json(
       { error: 'Erreur lors du diagnostic', details: String(error) },
       { status: 500 }

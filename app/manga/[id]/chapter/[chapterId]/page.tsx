@@ -7,6 +7,7 @@ import { retry } from '@/app/utils/retry';
 import { ArrowLeft, ChevronLeft, ChevronRight, List, Settings } from 'lucide-react';
 import ChapterReader from '@/app/components/ChapterReader';
 import { useChapterNavigation, Chapter as NavChapter } from '@/app/hooks/useChapterNavigation';
+import { logger } from '@/app/utils/logger';
 
 interface ChapterData {
   title: string;
@@ -81,7 +82,7 @@ function ChapterReaderContent() {
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Une erreur est survenue';
-        console.error(`[${new Date().toISOString()}] ${message}`);
+        logger.log('error', message, { mangaId, chapterId });
         setError(message);
         setChapterData(null);
       } finally {
