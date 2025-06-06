@@ -4,7 +4,7 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'uploads.mangadex.org',
+        hostname: '**', // Allows all hostnames
         port: '',
         pathname: '/**',
       },
@@ -20,4 +20,4 @@ const nextConfig = {
   },
 }
 
-module.exports = nextConfig 
+module.exports = nextConfig
