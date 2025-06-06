@@ -34,9 +34,10 @@ function ChapterReaderContent() {
   const [showHeader, setShowHeader] = useState(true);
   const lastScrollY = useRef(0);
   const [allChapters, setAllChapters] = useState<NavChapter[]>([]);
-  const { prevChapterId, nextChapterId } = useChapterNavigation(
+  const { prevChapterId, nextChapterId, currentLanguage } = useChapterNavigation(
     allChapters,
-    chapterId
+    chapterId,
+    chapterData?.language // Utiliser la langue du chapitre actuel comme préférence
   );
   const { updateReadingProgress } = useReadingProgress();
 
@@ -50,12 +51,19 @@ function ChapterReaderContent() {
           throw new Error('ID du manga ou du chapitre manquant');
         }
 
-        // Récupérer la liste des chapitres pour la navigation
-        const chaptersResponse = await retry(() => fetch(`/api/manga/${mangaId}/chapters?page=1`), 3, 500);
+        // Récupérer la liste des chapitres pour la navigation (récupérer tous les chapitres)
+        const chaptersResponse = await retry(() => fetch(`/api/manga/${mangaId}/chapters?all=true`), 3, 500);
         if (chaptersResponse.ok) {
           const chaptersData = await chaptersResponse.json();
           if (chaptersData.chapters) {
-            setAllChapters(chaptersData.chapters);
+            // S'assurer que les chapitres incluent les champs nécessaires pour la navigation
+            const chaptersWithLanguage = chaptersData.chapters.map((ch: any) => ({
+              id: ch.id,
+              title: ch.title,
+              language: ch.language,
+              chapter: ch.chapter
+            }));
+            setAllChapters(chaptersWithLanguage);
           }
         }
 
@@ -228,9 +236,9 @@ function ChapterReaderContent() {
       <div className={`fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-sm transition-transform duration-300 ${
         showHeader ? 'translate-y-0' : '-translate-y-full'
       }`}>
-        <div className="container mx-auto px-4 py-1">
+        <div className="container mx-auto px-4 py-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <button
                 onClick={goBackToManga}
                 className="p-2 hover:bg-white/10 rounded-full transition-colors"
@@ -239,18 +247,28 @@ function ChapterReaderContent() {
                 <ArrowLeft className="w-5 h-5" />
               </button>
               
+              {/* Version mobile ultra-compacte */}
               <div className="flex flex-col">
-                <h1 className="text-lg font-semibold">
-                  {chapterData.mangaTitle}
-                </h1>
-                <p className="text-sm text-gray-300">
-                  Chapitre {chapterData.chapter}
-                  {chapterData.title && ` - ${chapterData.title}`}
-                </p>
+                <div className="md:hidden">
+                  <p className="text-sm font-medium">
+                    Ch. {chapterData.chapter}
+                  </p>
+                </div>
+                
+                {/* Version desktop complète */}
+                <div className="hidden md:block">
+                  <h1 className="text-lg font-semibold">
+                    {chapterData.mangaTitle}
+                  </h1>
+                  <p className="text-sm text-gray-300">
+                    Chapitre {chapterData.chapter}
+                    {chapterData.title && ` - ${chapterData.title}`}
+                  </p>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
               {/* Navigation entre chapitres */}
               <button
                 onClick={() => {
@@ -300,7 +318,7 @@ function ChapterReaderContent() {
       </div>
 
       {/* Contenu principal avec le reader */}
-      <div className={`${showHeader ? 'pt-16' : 'pt-0'} transition-all duration-300`}>
+      <div className={`${showHeader ? 'pt-14 md:pt-16' : 'pt-0'} transition-all duration-300`}>
         <ChapterReader
           pages={chapterData.pages}
           chapter={chapterData.chapter}
@@ -310,40 +328,6 @@ function ChapterReaderContent() {
             // Suppression du console.log pour éviter le spam dans la console
           }}
         />
-      </div>
-
-      {/* Barre de navigation inférieure */}
-      <div className={`fixed bottom-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-sm transition-transform duration-300 ${
-        showHeader ? 'translate-y-0' : 'translate-y-full'
-      }`}>          <div className="container mx-auto px-4 py-1">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <span className="text-sm text-gray-300">
-                  {chapterData.pageCount} pages
-                </span>
-              </div>
-              
-              <div className="flex items-center gap-4">
-                {prevChapterId && (
-                  <button
-                    onClick={() => navigateToChapter(prevChapterId)}
-                    className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-sm"
-                  >
-                    Chapitre précédent
-                  </button>
-                )}
-
-                {nextChapterId && (
-                  <button
-                    onClick={() => navigateToChapter(nextChapterId)}
-                    className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors text-sm"
-                  >
-                    Chapitre suivant
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
       </div>
     </div>
   );

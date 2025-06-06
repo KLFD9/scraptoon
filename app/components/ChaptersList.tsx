@@ -4,6 +4,7 @@ import Link from 'next/link';
 
 import { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { getLanguageFlag } from '@/app/utils/language';
 
 
 interface Chapter {
@@ -43,34 +44,6 @@ interface ChaptersListProps {
 }
 
 type SortOption = 'newest' | 'oldest' | 'chapter-asc' | 'chapter-desc';
-
-// Fonction pour obtenir le drapeau à partir du code langue
-function getLanguageFlag(languageCode?: string): string {
-  if (!languageCode) return '🌐'; // Drapeau générique si pas de langue
-  
-  const flags: Record<string, string> = {
-    'fr': '🇫🇷',
-    'en': '🇺🇸',
-    'ja': '🇯🇵',
-    'ko': '🇰🇷',
-    'zh': '🇨🇳',
-    'es': '🇪🇸',
-    'de': '🇩🇪',
-    'it': '🇮🇹',
-    'pt': '🇵🇹',
-    'ru': '🇷🇺',
-    'ar': '🇸🇦',
-    'tr': '🇹🇷',
-    'th': '🇹🇭',
-    'vi': '🇻🇳',
-    'id': '🇮🇩',
-    'ms': '🇲🇾',
-    'tl': '🇵🇭',
-    'hi': '🇮🇳',
-  };
-  
-  return flags[languageCode.toLowerCase()] || '🌐';
-}
 
 // Fonction pour obtenir le nom de la langue
 function getLanguageName(languageCode?: string): string {

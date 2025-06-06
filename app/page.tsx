@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { Manga } from './types/manga';
 import SearchBar from './components/SearchBar';
 import MangaResults from './components/MangaResults';
-import FavoritesList from './components/FavoritesList';
 import ContinueReading from './components/ContinueReading';
 import Layout from './components/Layout';
 import ClientOnly from './components/ClientOnly';
@@ -12,13 +11,13 @@ import { scrapeManga } from './services/scraping.service';
 import { useFavorites } from './hooks/useFavorites';
 import { BookmarkPlus, BookOpen, Search, TrendingUp } from 'lucide-react';
 import { logger } from '@/app/utils/logger';
+import Link from 'next/link';
 
 const MAX_HISTORY_ITEMS = 5;
 
 export default function Home() {
   const [results, setResults] = useState<Manga[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showFavorites, setShowFavorites] = useState(false);
   const [searchHistory, setSearchHistory] = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('searchHistory');
@@ -27,12 +26,7 @@ export default function Home() {
     return [];
   });
 
-  const {
-    favorites,
-    removeFromFavorites,
-    updateReadingStatus,
-    addNote
-  } = useFavorites();
+  const { favorites } = useFavorites();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -42,7 +36,6 @@ export default function Home() {
 
   const handleSearch = async (query: string) => {
     setLoading(true);
-    setShowFavorites(false);
     try {
       const mangaResults = await scrapeManga(query);
       setResults(mangaResults);
@@ -94,23 +87,19 @@ export default function Home() {
                   />
                 </div>
 
-                {/* Favorites Button */}
-                <button
-                  onClick={() => setShowFavorites(!showFavorites)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 flex-shrink-0 ${
-                    showFavorites
-                      ? 'bg-white text-gray-950'
-                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white'
-                  }`}
+                {/* Favorites Link */}
+                <Link
+                  href="/favorites"
+                  className="px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 flex-shrink-0 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
                 >
                   <BookmarkPlus className="w-4 h-4" />
                   <span className="hidden sm:inline">Favoris</span>
                   {favorites.length > 0 && (
-                    <span className="bg-gray-600 text-white text-xs px-2 py-0.5 rounded-full">
+                    <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">
                       {favorites.length}
                     </span>
                   )}
-                </button>
+                </Link>
               </div>
 
               {/* Search Bar - Mobile */}
@@ -126,7 +115,7 @@ export default function Home() {
           </header>
 
           {/* Welcome Section */}
-          {!showFavorites && results.length === 0 && !loading && (
+          {results.length === 0 && !loading && (
             <div className="px-4 pt-6 sm:pt-8 pb-8 sm:pb-12">
               <div className="max-w-7xl mx-auto">
                 {/* Hero compact */}
@@ -173,37 +162,18 @@ export default function Home() {
 
           {/* Main Content */}
           <main className="px-3 sm:px-4 pb-6 sm:pb-8">
-            {showFavorites ? (
+            {results.length > 0 && (
               <div className="max-w-7xl mx-auto">
                 <div className="mb-4 sm:mb-6">
                   <h2 className="text-xl sm:text-2xl font-semibold text-white mb-1 sm:mb-2">
-                    Mes Favoris
+                    Résultats de recherche
                   </h2>
                   <p className="text-gray-400 text-sm sm:text-base">
-                    {favorites.length} manga{favorites.length > 1 ? 's' : ''} en favoris
+                    {results.length} manga{results.length > 1 ? 's' : ''} trouvé{results.length > 1 ? 's' : ''}
                   </p>
                 </div>
-                <FavoritesList
-                  favorites={favorites}
-                  onUpdateStatus={updateReadingStatus}
-                  onRemove={removeFromFavorites}
-                  onAddNote={addNote}
-                />
+                <MangaResults mangas={results} />
               </div>
-            ) : (
-              results.length > 0 && (
-                <div className="max-w-7xl mx-auto">
-                  <div className="mb-4 sm:mb-6">
-                    <h2 className="text-xl sm:text-2xl font-semibold text-white mb-1 sm:mb-2">
-                      Résultats de recherche
-                    </h2>
-                    <p className="text-gray-400 text-sm sm:text-base">
-                      {results.length} manga{results.length > 1 ? 's' : ''} trouvé{results.length > 1 ? 's' : ''}
-                    </p>
-                  </div>
-                  <MangaResults mangas={results} />
-                </div>
-              )
             )}
           </main>
         </div>

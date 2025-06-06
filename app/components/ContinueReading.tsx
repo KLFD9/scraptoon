@@ -3,37 +3,10 @@
 import { useReadingProgress } from '@/app/hooks/useReadingProgress';
 import Image from 'next/image';
 import Link from 'next/link';
+import { getLanguageFlag } from '@/app/utils/language';
 import { Play, X, Clock } from 'lucide-react';
 
 const DEFAULT_COVER = '/images/default-cover.svg';
-
-// Fonction pour obtenir le drapeau à partir du code langue
-function getLanguageFlag(languageCode?: string): string {
-  if (!languageCode) return '🌐'; // Drapeau générique si pas de langue
-  
-  const flags: Record<string, string> = {
-    'fr': '🇫🇷',
-    'en': '🇺🇸',
-    'ja': '🇯🇵',
-    'ko': '🇰🇷',
-    'zh': '🇨🇳',
-    'es': '🇪🇸',
-    'de': '🇩🇪',
-    'it': '🇮🇹',
-    'pt': '🇵🇹',
-    'ru': '🇷🇺',
-    'ar': '🇸🇦',
-    'tr': '🇹🇷',
-    'th': '🇹🇭',
-    'vi': '🇻🇳',
-    'id': '🇮🇩',
-    'ms': '🇲🇾',
-    'tl': '🇵🇭',
-    'hi': '🇮🇳',
-  };
-  
-  return flags[languageCode.toLowerCase()] || '🌐';
-}
 
 export default function ContinueReading() {
   const { readingProgress, removeFromReadingProgress } = useReadingProgress();

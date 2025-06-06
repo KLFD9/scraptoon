@@ -220,29 +220,7 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({ pages, chapter, mangaTitl
         })}
       </div>
 
-      {/* Footer: Back to Top and Page Indicator */}
-      <div
-        className={`fixed bottom-0 left-0 right-0 z-50 transition-transform duration-300 ease-in-out ${
-          isUIVisible ? 'translate-y-0' : 'translate-y-full'
-        } bg-black/70 backdrop-blur-sm p-3 flex justify-between items-center shadow-md_top`}
-      >
-        {/* Page counter */}
-        <div className="text-white text-sm">
-          Page {currentPage}/{pages.length}
-        </div>
-        
-        <button
-          onClick={() => {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-            setIsUIVisible(true);
-          }}
-          className="bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-full flex items-center text-sm"
-          aria-label="Retour en haut"
-        >
-          <ChevronUp className="h-5 w-5 mr-1" />
-          Retour en haut
-        </button>
-      </div>
+
     </div>
   )
 }
