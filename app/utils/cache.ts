@@ -13,7 +13,17 @@ export class Cache<T = unknown> {
     this.ttl = ttl;
   }
 
+  private pruneExpired(): void {
+    const now = Date.now();
+    for (const [key, entry] of Object.entries(this.memoryCache)) {
+      if (now - entry.timestamp > this.ttl) {
+        delete this.memoryCache[key];
+      }
+    }
+  }
+
   async set(key: string, data: T): Promise<void> {
+    this.pruneExpired();
     this.memoryCache[key] = { data, timestamp: Date.now() };
     try {
       const client = await getRedisClient();
@@ -24,6 +34,7 @@ export class Cache<T = unknown> {
   }
 
   async get(key: string): Promise<T | null> {
+    this.pruneExpired();
     const entry = this.memoryCache[key];
     if (entry && Date.now() - entry.timestamp <= this.ttl) {
       return entry.data;
