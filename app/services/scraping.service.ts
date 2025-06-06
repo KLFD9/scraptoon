@@ -101,3 +101,21 @@ export async function getBestSellerManga(limit: number = 8): Promise<Manga[]> {
     return [];
   }
 }
+export async function getNewestManga(limit: number = 8): Promise<Manga[]> {
+  try {
+    const response = await fetch(`/api/newest?limit=${limit}`);
+    if (!response.ok) {
+      throw new Error(`Erreur HTTP: ${response.status}`);
+    }
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Erreur inconnue');
+    }
+    return data.results as Manga[];
+  } catch (error) {
+    logger.log('error', 'Erreur lors de la récupération des nouveautés', {
+      error: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+    return [];
+  }
+}

@@ -58,6 +58,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Manga details cached for an hour to minimize API calls.
 - Browser instance reused across chapter searches for faster scraping.
 - Common Puppeteer launch arguments moved to a `launchBrowser` utility.
+- New "Nouveautés" section shows latest manga using the MangaDex API.
 
 - Rate limiter on `/api/scraper` prevents abusive calls.
 - Search queries are sanitized and only HTTPS requests are allowed.
