@@ -278,8 +278,8 @@ function ChapterReaderContent() {
           chapter={chapterData.chapter}
           mangaTitle={chapterData.mangaTitle}
           onPageChange={(page) => {
-            // Optionnel : sauvegarder la progression de lecture
-            console.log(`Page ${page} en cours de lecture`);
+            // Optionnel : sauvegarder la progression de lecture silencieusement
+            // Suppression du console.log pour éviter le spam dans la console
           }}
         />
       </div>
