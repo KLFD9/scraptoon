@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import puppeteer, { Page, Browser } from 'puppeteer';
+import type { Page, Browser } from 'puppeteer';
+import { launchBrowser } from '@/app/utils/launchBrowser';
 import { Cache } from '@/app/utils/cache';
 
 
@@ -12,15 +13,9 @@ let browserPromise: Promise<Browser> | null = null;
 
 async function getBrowser(): Promise<Browser> {
   if (!browserPromise) {
-    browserPromise = puppeteer.launch({
+    browserPromise = launchBrowser({
       headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-web-security',
-        '--disable-features=VizDisplayCompositor',
-      ],
+      args: ['--disable-features=VizDisplayCompositor'],
     });
   }
   return browserPromise;
