@@ -12,71 +12,82 @@ interface MangaResultsProps {
 export default function MangaResults({ mangas }: MangaResultsProps) {
   if (!mangas || mangas.length === 0) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">Aucun manga trouvé</p>
+      <div className="text-center py-16">
+        <div className="w-16 h-16 mx-auto mb-4 bg-gray-800 rounded-lg flex items-center justify-center">
+          <BookOpen className="w-8 h-8 text-gray-400" />
+        </div>
+        <h3 className="text-lg font-medium text-white mb-2">
+          Aucun manga trouvé
+        </h3>
+        <p className="text-gray-400">
+          Essayez avec d'autres mots-clés
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 gap-3 sm:gap-4">
       {mangas.map((manga) => (
         <Link
           href={`/manga/${manga.id}`}
           key={manga.id}
-          className="group bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
+          className="group bg-gray-900 rounded-lg overflow-hidden border border-gray-800 hover:border-gray-700 transition-all duration-200"
         >
-          <div className="relative">
-            <div className="relative h-56 w-full">
-              <Image
-                src={manga.cover}
-                alt={manga.title}
-                fill
-                className="object-cover transform transition-transform duration-300 group-hover:scale-105"
-                sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-              {/* Badges */}
-              <div className="absolute top-2 left-2 flex flex-col gap-2">
-                <span className="bg-gray-800/90 text-white px-2 py-1 rounded-full text-xs font-semibold backdrop-blur-sm">
-                  {manga.type.toUpperCase()}
+          {/* Image Container */}
+          <div className="relative aspect-[3/4] overflow-hidden">
+            <Image
+              src={manga.cover}
+              alt={manga.title}
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
+              sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1024px) 20vw, (max-width: 1280px) 16vw, 14vw"
+            />
+            
+            {/* Overlay */}
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200" />
+            
+            {/* Badges */}
+            <div className="absolute top-1.5 left-1.5 flex flex-col gap-1">
+              {manga.isAvailableInFrench && (
+                <span className="bg-white text-gray-950 px-1.5 py-0.5 rounded text-xs font-medium">
+                  FR
                 </span>
-                {manga.isAvailableInFrench && (
-                  <span className="bg-blue-500/90 text-white px-2 py-1 rounded-full text-xs font-semibold backdrop-blur-sm">
-                    FR
-                  </span>
-                )}
-              </div>
-
-              {/* Informations en bas */}
-              <div className="absolute bottom-2 right-2 flex items-center gap-2">
-                <span className={`px-2 py-1 rounded-full text-xs font-semibold backdrop-blur-sm ${
-                  manga.chapterCount?.french > 0 
-                    ? 'bg-blue-500/90 text-white'
-                    : 'bg-gray-500/90 text-white'
-                }`}>
-                  <BookOpen className="w-3 h-3 inline mr-1" />
-                  {manga.chapterCount?.total || '?'} ch.
-                </span>
-                <span className={`px-2 py-1 rounded-full text-xs font-semibold backdrop-blur-sm ${
-                  manga.status === 'ongoing' 
-                    ? 'bg-green-500/90 text-white' 
-                    : 'bg-gray-500/90 text-white'
-                }`}>
-                  {manga.status === 'ongoing' ? 'En cours' : 'Terminé'}
-                </span>
-              </div>
+              )}
+              <span className="bg-gray-900/80 text-white px-1.5 py-0.5 rounded text-xs">
+                {manga.type.charAt(0).toUpperCase()}
+              </span>
             </div>
+            
+            {/* Chapter count */}
+            <div className="absolute bottom-1.5 right-1.5">
+              <span className="bg-gray-900/80 text-white px-1.5 py-0.5 rounded text-xs flex items-center gap-1">
+                <BookOpen className="w-2.5 h-2.5" />
+                <span className="hidden sm:inline">{manga.chapterCount?.total || '?'}</span>
+                <span className="sm:hidden">{manga.chapterCount?.total || '?'}</span>
+              </span>
+            </div>
+          </div>
 
-            <div className="p-3">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white line-clamp-1 group-hover:text-blue-500 transition-colors duration-200">
-                {manga.title}
-              </h3>
+          {/* Content */}
+          <div className="p-2 sm:p-3">
+            <h3 className="text-white font-medium text-xs sm:text-sm line-clamp-2 mb-1 sm:mb-2 group-hover:text-gray-300 transition-colors leading-tight">
+              {manga.title}
+            </h3>
+            
+            <div className="flex items-center justify-between text-xs">
+              <span className={`px-1.5 py-0.5 rounded text-xs ${
+                manga.status === 'ongoing' 
+                  ? 'bg-green-900/30 text-green-400' 
+                  : 'bg-gray-800 text-gray-400'
+              }`}>
+                {manga.status === 'ongoing' ? 'En cours' : 'Terminé'}
+              </span>
+              
               {manga.author && (
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-1">
-                  {manga.author}
-                </p>
+                <span className="text-gray-400 truncate ml-1 text-xs hidden sm:inline">
+                  {manga.author.split(' ')[0]}
+                </span>
               )}
             </div>
           </div>
@@ -84,4 +95,4 @@ export default function MangaResults({ mangas }: MangaResultsProps) {
       ))}
     </div>
   );
-} 
+}

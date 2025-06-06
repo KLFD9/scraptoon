@@ -82,6 +82,7 @@ interface ChapterResult {
   language: string;
   scrapingMethod: string | null;
   mangaTitle: string;
+  mangaCover?: string; // Ajouter la couverture du manga
   publishAt: string | null;
   readableAt: string | null;
   createdAt: string;
@@ -204,9 +205,7 @@ async function performLazyLoad(
       await new Promise(resolve => setTimeout(resolve, 500));
     } catch (error) {
       logger.log('error', 'lazy load scroll error', {
-        error: String(error),
-        scroll: i + 1,
-        maxScrolls
+        error: `Scroll attempt ${i + 1} of ${maxScrolls} failed: ${String(error)}`,
       });
     }
   }
@@ -487,14 +486,44 @@ export async function GET(
     // Fallback avec images de démonstration si aucune image trouvée
     if (images.length === 0) {
       console.log('⚠️ Aucune image trouvée, utilisation d\'images de démonstration');
-      images = [
-        'https://via.placeholder.com/800x1200/2C3E50/FFFFFF?text=Page+1+Demo',
-        'https://via.placeholder.com/800x1200/34495E/FFFFFF?text=Page+2+Demo',
-        'https://via.placeholder.com/800x1200/2C3E50/FFFFFF?text=Page+3+Demo',
-        'https://via.placeholder.com/800x1200/34495E/FFFFFF?text=Page+4+Demo',
-        'https://via.placeholder.com/800x1200/2C3E50/FFFFFF?text=Page+5+Demo'
-      ];
+      // Utiliser des images SVG générées directement pour éviter les problèmes de CORS
+      const generateDemoImage = (pageNum: number) => {
+        const svgContent = `
+          <svg width="800" height="1200" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100%" height="100%" fill="#1f2937"/>
+            <text x="50%" y="50%" font-family="Arial, sans-serif" font-size="48" fill="#9ca3af" text-anchor="middle">
+              Page ${pageNum}
+            </text>
+            <text x="50%" y="60%" font-family="Arial, sans-serif" font-size="24" fill="#6b7280" text-anchor="middle">
+              Démonstration
+            </text>
+          </svg>
+        `;
+        return `data:image/svg+xml;base64,${Buffer.from(svgContent).toString('base64')}`;
+      };
+      
+      images = Array.from({ length: 5 }, (_, i) => generateDemoImage(i + 1));
       successfulConfig = 'demo-fallback';
+    }
+
+    // Récupérer aussi les informations du manga pour la couverture
+    let mangaCover: string | undefined;
+    try {
+      const mangaResponse = await retry(
+        () => fetch(`https://api.mangadex.org/manga/${mangaId}?includes[]=cover_art`),
+        3,
+        1000
+      );
+      if (mangaResponse.ok) {
+        const mangaData = await mangaResponse.json();
+        const coverArt = mangaData.data.relationships?.find((rel: any) => rel.type === 'cover_art');
+        if (coverArt?.attributes?.fileName) {
+          mangaCover = `https://uploads.mangadex.org/covers/${mangaId}/${coverArt.attributes.fileName}.512.jpg`;
+        }
+      }
+    } catch (error) {
+      // Ignorer les erreurs de récupération de la couverture
+      console.log('⚠️ Impossible de récupérer la couverture du manga');
     }
 
     const result: ChapterResult = {
@@ -508,6 +537,7 @@ export async function GET(
       language: chapter.attributes.translatedLanguage,
       scrapingMethod: successfulConfig,
       mangaTitle: titleSlug,
+      mangaCover, // Ajouter la couverture
       publishAt: chapter.attributes.publishAt,
       readableAt: chapter.attributes.readableAt,
       createdAt: chapter.attributes.createdAt,
@@ -522,7 +552,7 @@ export async function GET(
   } catch (error) {
     logger.log('error', 'chapter retrieval error', {
       error: String(error),
-      chapterId,
+      chapterId: params.chapterId,
       mangaId: params.id
     });
     return NextResponse.json(

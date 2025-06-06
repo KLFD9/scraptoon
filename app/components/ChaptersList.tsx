@@ -106,20 +106,20 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
 
   if (error) {
     return (
-      <div className="text-center py-8 text-red-500">
-        {error}
+      <div className="text-center py-8">
+        <p className="text-red-400">{error}</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-0">
       {/* En-tête avec titre et options de tri */}
-      <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+      <div className="p-4 border-b border-gray-800">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+              <h2 className="text-lg font-semibold text-white">
                 Chapitres disponibles
               </h2>
             </div>
@@ -127,7 +127,7 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="text-sm bg-transparent border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="text-sm bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-gray-300 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-gray-600 transition-colors"
               >
                 <option value="newest">Plus récents</option>
                 <option value="oldest">Plus anciens</option>
@@ -137,7 +137,7 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
             </div>
           </div>
           {!isLoading && pagination && (
-            <span className="text-sm text-gray-500 dark:text-gray-400 sm:ml-auto">
+            <span className="text-sm text-gray-400 sm:ml-auto">
               {chapters.length} chapitres {pagination.totalItems > 0 && `sur ${pagination.totalItems} au total`}
             </span>
           )}
@@ -146,33 +146,35 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
 
       {isLoading ? (
         <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-2 border-blue-500 border-t-transparent mx-auto"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-white border-t-transparent mx-auto"></div>
         </div>
       ) : chapters.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          Aucun chapitre trouvé
+        <div className="text-center py-8">
+          <p className="text-gray-400">Aucun chapitre trouvé</p>
         </div>
       ) : (
         <div>
           {/* Liste des chapitres */}
-          <div className="divide-y divide-gray-100 dark:divide-gray-700">
+          <div className="divide-y divide-gray-800">
             {sortChapters(chapters).map((chapter) => (
               <Link
                 key={chapter.id}
                 href={`/manga/${mangaId}/chapter/${chapter.id}`}
-                className="block p-4 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
+                className="block p-4 hover:bg-gray-800 transition-colors"
               >
                 <div className="flex justify-between items-center">
                   <div>
-                    <h3 className="text-lg font-semibold">
-                      {chapter.chapter}
+                    <h3 className="text-base font-medium text-white">
+                      Chapitre {chapter.chapter}
                       {chapter.title && ` - ${chapter.title}`}
                     </h3>
-                    <p className="text-sm text-gray-400">
-                      {chapter.publishedAt}
-                    </p>
+                    {chapter.publishedAt && (
+                      <p className="text-sm text-gray-400 mt-1">
+                        {new Date(chapter.publishedAt).toLocaleDateString('fr-FR')}
+                      </p>
+                    )}
                   </div>
-                  <div className="text-sm text-gray-400">
+                  <div className="text-gray-500">
                     <ChevronRight className="w-5 h-5" />
                   </div>
                 </div>
@@ -182,12 +184,12 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
 
           {/* Pagination */}
           {pagination && pagination.totalPages > 1 && (
-            <div className="flex flex-col items-center justify-center gap-4 p-4 border-t border-gray-100 dark:border-gray-700">
+            <div className="flex flex-col items-center justify-center gap-4 p-4 border-t border-gray-800">
               <div className="flex items-center space-x-2">
                 <button
                   onClick={() => handlePageChange(pagination.currentPage - 1)}
                   disabled={!pagination.hasPreviousPage}
-                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                  className="p-2 rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-gray-400 hover:text-white"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
@@ -220,16 +222,16 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
                         <button
                           key={index}
                           onClick={() => handlePageChange(pageNum)}
-                          className={`w-8 h-8 rounded-full ${
+                          className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${
                             pagination.currentPage === pageNum
-                              ? 'bg-blue-500 text-white'
-                              : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                              ? 'bg-white text-gray-950'
+                              : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                           }`}
                         >
                           {pageNum}
                         </button>
                       ) : (
-                        <span key={index} className="px-2">
+                        <span key={index} className="px-2 text-gray-500">
                           {pageNum}
                         </span>
                       )
@@ -240,7 +242,7 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
                 <button
                   onClick={() => handlePageChange(pagination.currentPage + 1)}
                   disabled={!pagination.hasNextPage}
-                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                  className="p-2 rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-gray-400 hover:text-white"
                 >
                   <ChevronRight className="w-5 h-5" />
                 </button>
@@ -248,7 +250,7 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
               
               {/* Sélecteur de page */}
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500">Aller à la page</span>
+                <span className="text-sm text-gray-400">Aller à la page</span>
                 <input
                   type="number"
                   min={1}
@@ -260,9 +262,9 @@ export default function ChaptersList({ mangaId }: ChaptersListProps) {
                       handlePageChange(page);
                     }
                   }}
-                  className="w-16 px-2 py-1 text-sm bg-transparent border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-16 px-2 py-1 text-sm bg-gray-800 border border-gray-700 rounded-lg text-gray-300 focus:outline-none focus:ring-2 focus:ring-white/20 focus:border-gray-600 transition-colors"
                 />
-                <span className="text-sm text-gray-500">sur {pagination.totalPages}</span>
+                <span className="text-sm text-gray-400">sur {pagination.totalPages}</span>
               </div>
             </div>
           )}

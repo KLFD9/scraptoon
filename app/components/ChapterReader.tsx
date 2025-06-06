@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { ChevronUp } from 'lucide-react'
-import { logger } from '@/app/utils/logger'
+import ImageErrorFeedback from './ImageErrorFeedback'
 
 interface ChapterReaderProps {
   pages: string[]
@@ -98,12 +98,16 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({ pages, chapter, mangaTitl
   }
 
   const handleImageError = (index: number) => {
-    logger.log('error', `Image ${index + 1} failed to load`, { index })
     setImageErrors(prev => {
       const newSet = new Set(prev)
       newSet.add(index)
       return newSet
     })
+  }
+
+  const handleReportImage = (pageIndex: number) => {
+    // Optionnel : envoyer le rapport à un service de feedback
+    console.log(`Image signalée pour la page ${pageIndex + 1}`)
   }
 
   // Initial preload
@@ -180,6 +184,11 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({ pages, chapter, mangaTitl
                 <div className="bg-gray-800 text-white p-8 text-center rounded-lg w-full h-[60vh] flex flex-col justify-center items-center">
                   <p>Erreur de chargement de l&apos;image {index + 1}</p>
                   <p className="text-sm text-gray-400 mt-2 break-words">URL: {url}</p>
+                  {/* Feedback optionnel pour signaler l'erreur */}
+                  <ImageErrorFeedback 
+                    pageIndex={index} 
+                    onReport={handleReportImage}
+                  />
                 </div>
               ) : (
                 <Image

@@ -7,6 +7,7 @@ import { retry } from '@/app/utils/retry';
 import { ArrowLeft, ChevronLeft, ChevronRight, List, Settings } from 'lucide-react';
 import ChapterReader from '@/app/components/ChapterReader';
 import { useChapterNavigation, Chapter as NavChapter } from '@/app/hooks/useChapterNavigation';
+import { useReadingProgress } from '@/app/hooks/useReadingProgress';
 import { logger } from '@/app/utils/logger';
 
 interface ChapterData {
@@ -37,6 +38,7 @@ function ChapterReaderContent() {
     allChapters,
     chapterId
   );
+  const { updateReadingProgress } = useReadingProgress();
 
   useEffect(() => {
     const fetchChapterData = async () => {
@@ -80,6 +82,31 @@ function ChapterReaderContent() {
           pages: pagesArray,
           pageCount: data.pageCount ?? pagesArray.length,
         });
+
+        // Mettre à jour la progression de lecture
+        if (data.mangaTitle && data.chapter) {
+          // Si la couverture n'est pas disponible dans l'API chapitre, essayer de la récupérer depuis l'API manga
+          let coverUrl = data.mangaCover;
+          if (!coverUrl) {
+            try {
+              const mangaResponse = await fetch(`/api/manga/${mangaId}`);
+              if (mangaResponse.ok) {
+                const mangaData = await mangaResponse.json();
+                coverUrl = mangaData.cover;
+              }
+            } catch (error) {
+              // Ignorer silencieusement les erreurs de récupération de couverture
+            }
+          }
+
+          updateReadingProgress(
+            mangaId,
+            chapterId,
+            data.chapter,
+            data.mangaTitle,
+            coverUrl
+          );
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Une erreur est survenue';
         logger.log('error', message, { mangaId, chapterId });
