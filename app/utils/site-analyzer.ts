@@ -207,14 +207,14 @@ async function main() {
     // Générer des recommandations
     console.log('\n💡 Recommandations pour les sélecteurs :');
     
-    if (webtoonAnalysis?.foundContainers.length > 0) {
+    if (webtoonAnalysis && webtoonAnalysis.foundContainers && webtoonAnalysis.foundContainers.length > 0) {
       console.log('\nWebtoons - Conteneurs trouvés:');
       webtoonAnalysis.foundContainers.forEach((container: ContainerInfo) => {
         console.log(`  - ${container.selector} (${container.children} enfants)`);
       });
     }
     
-    if (reaperAnalysis?.foundContainers.length > 0) {
+    if (reaperAnalysis && reaperAnalysis.foundContainers && reaperAnalysis.foundContainers.length > 0) {
       console.log('\nReaper-Scans - Conteneurs trouvés:');
       reaperAnalysis.foundContainers.forEach((container: ContainerInfo) => {
         console.log(`  - ${container.selector} (${container.children} enfants)`);
