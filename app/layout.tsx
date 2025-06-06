@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import HydrationFix from "./components/HydrationFix";
+
+// Import diagnostics pour le mode développement
+if (process.env.NODE_ENV === 'development') {
+  import('./utils/hydration-diagnostics');
+}
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,11 +29,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="fr">
-      <body
+    <html lang="fr" suppressHydrationWarning>      <body
         suppressHydrationWarning={true}
         className={`${geistSans.variable} ${geistMono.variable} font-sans`}
       >
+        <HydrationFix />
         {children}
       </body>
     </html>

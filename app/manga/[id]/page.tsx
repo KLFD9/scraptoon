@@ -226,7 +226,7 @@ function MangaContent() {
                     <BookOpen className="w-4 h-4 text-gray-950" />
                   </div>
                   <h1 className="text-lg font-semibold text-white truncate max-w-xs sm:max-w-md">
-                    Woons
+                    "{manga.title}"
                   </h1>
                 </button>
               </div>
