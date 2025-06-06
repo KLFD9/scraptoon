@@ -1,68 +1,19 @@
 'use client';
 
 import { Clock, Sparkles, TrendingUp } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import LoadingSpinner from './LoadingSpinner';
 import ErrorMessage from './ErrorMessage';
-import DemoMangaCover from './DemoMangaCover';
+import { useNewest } from '../hooks/useNewest';
 
 interface NewestSectionProps {
   onSearch: (query: string) => void;
 }
 
-interface NewManga {
-  id: string;
-  title: string;
-  cover: string;
-  addedDate?: string;
-}
-
 const DEFAULT_COVER = '/images/default-cover.svg';
 
-// Mock data pour les nouveautés (à remplacer par de vraies données API)
-const MOCK_NEWEST: NewManga[] = [
-  { id: '1', title: 'Tower of God', cover: DEFAULT_COVER, addedDate: 'Il y a 2h' },
-  { id: '2', title: 'Solo Leveling', cover: DEFAULT_COVER, addedDate: 'Il y a 5h' },
-  { id: '3', title: 'The God of High School', cover: DEFAULT_COVER, addedDate: 'Il y a 1j' },
-  { id: '4', title: 'Noblesse', cover: DEFAULT_COVER, addedDate: 'Il y a 2j' },
-  { id: '5', title: 'Unordinary', cover: DEFAULT_COVER, addedDate: 'Il y a 3j' },
-  { id: '6', title: 'Lookism', cover: DEFAULT_COVER, addedDate: 'Il y a 4j' },
-  { id: '7', title: 'True Beauty', cover: DEFAULT_COVER, addedDate: 'Il y a 5j' },
-  { id: '8', title: 'Sweet Home', cover: DEFAULT_COVER, addedDate: 'Il y a 1s' }
-];
-
 export default function NewestSection({ onSearch }: NewestSectionProps) {
-  const [newest, setNewest] = useState<NewManga[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Simule un chargement asynchrone
-    const loadNewest = async () => {
-      try {
-        setLoading(true);
-        // Simule un délai de chargement
-        await new Promise(resolve => setTimeout(resolve, 800));
-        setNewest(MOCK_NEWEST);
-      } catch (err) {
-        setError('Impossible de charger les nouveautés');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadNewest();
-  }, []);
-
-  const refetch = () => {
-    setError(null);
-    setLoading(true);
-    // Simule un rechargement
-    setTimeout(() => {
-      setNewest(MOCK_NEWEST);
-      setLoading(false);
-    }, 500);
-  };
+  const { newest, loading, error, refetch } = useNewest(8);
 
   if (loading) {
     return (
@@ -128,11 +79,17 @@ export default function NewestSection({ onSearch }: NewestSectionProps) {
               className="group cursor-pointer" 
               onClick={() => onSearch(manga.title)}
             >
-              {/* Mini Cover */}              <div className="relative aspect-[3/4] rounded-md overflow-hidden bg-gray-800 border border-gray-700/50 hover:border-blue-500/50 transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/10">
-                <DemoMangaCover
-                  title={manga.title}
-                  className="transition-transform group-hover:scale-105"
+              {/* Mini Cover */}
+              <div className="relative aspect-[3/4] rounded-md overflow-hidden bg-gray-800 border border-gray-700/50 hover:border-blue-500/50 transition-all duration-200 hover:shadow-lg hover:shadow-blue-500/10">
+                <Image
+                  src={manga.cover || DEFAULT_COVER}
+                  alt={manga.title}
+                  fill
+                  className="object-cover transition-transform group-hover:scale-105"
                   sizes="(max-width: 640px) 25vw, 12.5vw"
+                  onError={(e: React.SyntheticEvent<HTMLImageElement>) => {
+                    (e.target as HTMLImageElement).src = DEFAULT_COVER;
+                  }}
                 />
                 
                 {/* New Badge */}
@@ -146,14 +103,6 @@ export default function NewestSection({ onSearch }: NewestSectionProps) {
                   </div>
                 </div>
                 
-                {/* Time indicator */}
-                {manga.addedDate && (
-                  <div className="absolute top-1 right-1">
-                    <div className="px-1 py-0.5 bg-black/60 backdrop-blur-sm rounded text-xs text-gray-300">
-                      {manga.addedDate}
-                    </div>
-                  </div>
-                )}
                 
                 {/* Hover Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-blue-500/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
