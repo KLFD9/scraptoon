@@ -53,6 +53,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Logger interface cleaned up to remove duplicate fields.
 - Header visibility responds to scroll direction while reading.
 - Client-side state initialization avoids hydration mismatches.
+- Configuration unified under `next.config.ts` with custom image patterns and API rewrites.
 
 - Chapter images fetched via the MangaDex API with cached results (fallback to scraping).
 - Manga details cached for an hour to minimize API calls.
