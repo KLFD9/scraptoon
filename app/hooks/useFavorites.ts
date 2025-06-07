@@ -1,17 +1,17 @@
-import { useState, useEffect, useRef } from 'react';
-import { useState, useEffect, createContext, useContext } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  createContext,
+  useContext,
+} from 'react';
 import { Manga, FavoriteManga, ReadingStatus } from '../types/manga';
 const FAVORITES_KEY = 'mangaScraper_favorites';
 
-export function useFavorites() {
+function useFavoritesState() {
   const [favorites, setFavorites] = useState<FavoriteManga[]>(() => {
     if (typeof window === 'undefined') return [];
     try {
-function useFavoritesState() {
-  const [favorites, setFavorites] = useState<FavoriteManga[]>([]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(FAVORITES_KEY);
       return saved ? JSON.parse(saved) : [];
     } catch {
@@ -20,7 +20,6 @@ function useFavoritesState() {
   });
 
   const isInitialMount = useRef(true);
-
 
   useEffect(() => {
     if (isInitialMount.current) {
@@ -113,10 +112,10 @@ const FavoritesContext = createContext<FavoritesContextValue | null>(null);
 
 export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   const value = useFavoritesState();
-  return (
-    <FavoritesContext.Provider value={value}>
-      {children}
-    </FavoritesContext.Provider>
+  return React.createElement(
+    FavoritesContext.Provider,
+    { value },
+    children,
   );
 }
 
