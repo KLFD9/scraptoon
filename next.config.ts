@@ -14,6 +14,17 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: false
   },
+
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+  },
   
   // Headers pour éviter les conflits d'extensions
   async headers() {
@@ -30,6 +41,15 @@ const nextConfig: NextConfig = {
             value: 'DENY',
           },
         ],
+      },
+    ];
+  },
+
+  async rewrites() {
+    return [
+      {
+        source: '/api/mangadex/:path*',
+        destination: 'https://api.mangadex.org/:path*',
       },
     ];
   },
