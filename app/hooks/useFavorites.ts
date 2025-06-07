@@ -1,11 +1,10 @@
-'use client';
-
-import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { Manga, FavoriteManga, ReadingStatus } from '../types/manga';
+import { logger } from '../utils/logger';
 
 const FAVORITES_KEY = 'mangaScraper_favorites';
 
-// Définition du type pour le contexte
+// Type pour le contexte
 interface FavoritesContextType {
   favorites: FavoriteManga[];
   addToFavorites: (manga: Manga) => void;
@@ -15,14 +14,13 @@ interface FavoritesContextType {
   addNote: (mangaId: string, note: string) => void;
   isFavorite: (mangaId: string) => boolean;
   getFavoritesByStatus: (status: ReadingStatus) => FavoriteManga[];
-  isLoaded?: boolean;
+  isLoaded: boolean;
 }
 
 // Création du contexte
 const FavoritesContext = createContext<FavoritesContextType | undefined>(undefined);
 
-// Le hook original qui contient toute la logique
-function useFavoritesState(): FavoritesContextType {
+export function useFavorites() {
   const [favorites, setFavorites] = useState<FavoriteManga[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -103,7 +101,6 @@ function useFavoritesState(): FavoritesContextType {
   const getFavoritesByStatus = (status: ReadingStatus) => {
     return favorites.filter(manga => manga.readingStatus === status);
   };
-
   return {
     favorites,
     addToFavorites,
@@ -117,21 +114,17 @@ function useFavoritesState(): FavoritesContextType {
   };
 }
 
-// Le Provider qui utilise le hook et fournit le contexte
+// Provider pour le contexte
 export function FavoritesProvider({ children }: { children: ReactNode }) {
-  const favoritesState = useFavoritesState();
-  return (
-    <FavoritesContext.Provider value={favoritesState}>
-      {children}
-    </FavoritesContext.Provider>
-  );
+  const favoritesState = useFavorites();
+  return React.createElement(FavoritesContext.Provider, { value: favoritesState }, children);
 }
 
-// Hook pour consommer le contexte
-export function useFavorites(): FavoritesContextType {
+// Hook pour consommer le contexte (optionnel, peut utiliser useFavorites directement)  
+export function useFavoritesContext(): FavoritesContextType {
   const context = useContext(FavoritesContext);
   if (context === undefined) {
-    throw new Error('useFavorites must be used within a FavoritesProvider');
+    throw new Error('useFavoritesContext must be used within a FavoritesProvider');
   }
   return context;
 }
