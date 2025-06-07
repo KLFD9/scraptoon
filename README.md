@@ -67,6 +67,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Unit tests verify favorites persistence and recommendation caching.
 - Favorites loaded from `localStorage` on initial render prevent empty favorites
   pages and ensure your list persists across sessions.
+- Graceful localStorage fallback avoids errors if saved favorites are malformed.
 - Recently read manga IDs stored in the `reading_history` cookie (last 20).
 
 - Rate limiter on `/api/scraper` prevents abusive calls.
