@@ -41,6 +41,30 @@ function ChapterReaderContent() {
   );
   const { updateReadingProgress } = useReadingProgress();
 
+  const updateHistoryCookie = (id: string) => {
+    if (typeof document === 'undefined') return;
+    try {
+      const cookie = document.cookie
+        .split('; ')
+        .find((row) => row.startsWith('reading_history='));
+      let history: string[] = [];
+      if (cookie) {
+        const value = decodeURIComponent(cookie.split('=')[1]);
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) {
+          history = parsed;
+        }
+      }
+      const filtered = history.filter((h) => h !== id);
+      const updated = [id, ...filtered].slice(0, 20);
+      document.cookie = `reading_history=${encodeURIComponent(
+        JSON.stringify(updated)
+      )};path=/;max-age=${60 * 60 * 24 * 30}`;
+    } catch {
+      // ignore cookie errors
+    }
+  };
+
   useEffect(() => {
     const fetchChapterData = async () => {
       try {
@@ -115,6 +139,7 @@ function ChapterReaderContent() {
             coverUrl,
             data.language
           );
+          updateHistoryCookie(mangaId);
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Une erreur est survenue';
