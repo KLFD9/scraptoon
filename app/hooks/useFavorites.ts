@@ -1,18 +1,36 @@
+import { useState, useEffect, useRef } from 'react';
 import { useState, useEffect, createContext, useContext } from 'react';
 import { Manga, FavoriteManga, ReadingStatus } from '../types/manga';
-
 const FAVORITES_KEY = 'mangaScraper_favorites';
 
+export function useFavorites() {
+  const [favorites, setFavorites] = useState<FavoriteManga[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
 function useFavoritesState() {
   const [favorites, setFavorites] = useState<FavoriteManga[]>([]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem(FAVORITES_KEY);
-      setFavorites(saved ? JSON.parse(saved) : []);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
     }
-  }, []);
+  });
 
+  const isInitialMount = useRef(true);
+
+
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+    }
+  }, [favorites]);
 
   const addToFavorites = (manga: Manga) => {
     setFavorites(prev => {
