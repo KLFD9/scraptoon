@@ -61,6 +61,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Common Puppeteer launch arguments moved to a `launchBrowser` utility.
 - New "Nouveautés" section shows latest manga using the MangaDex API.
 - Personalized recommendations via `/api/recommendations` with local caching.
+- Unit tests verify favorites persistence and recommendation caching.
 
 - Rate limiter on `/api/scraper` prevents abusive calls.
 - Search queries are sanitized and only HTTPS requests are allowed.
