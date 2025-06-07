@@ -1,6 +1,6 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-For an overview of the technical foundations and planned improvements, see [agent.md](./agent.md).
+For an overview of the technical foundations and planned improvements, see [AGENTS.md](./AGENTS.md).
 
 ## Getting Started
 
