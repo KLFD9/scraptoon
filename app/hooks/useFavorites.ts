@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, createContext, useContext } from 'react';
 import { Manga, FavoriteManga, ReadingStatus } from '../types/manga';
 
 const FAVORITES_KEY = 'mangaScraper_favorites';
 
-export function useFavorites() {
+function useFavoritesState() {
   const [favorites, setFavorites] = useState<FavoriteManga[]>([]);
 
   useEffect(() => {
@@ -13,11 +13,6 @@ export function useFavorites() {
     }
   }, []);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
-    }
-  }, [favorites]);
 
   const addToFavorites = (manga: Manga) => {
     setFavorites(prev => {
@@ -33,22 +28,34 @@ export function useFavorites() {
         }
       };
       
-      return [...prev, newFavorite];
+      const updated = [...prev, newFavorite];
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(FAVORITES_KEY, JSON.stringify(updated));
+      }
+      return updated;
     });
   };
 
   const removeFromFavorites = (mangaId: string) => {
-    setFavorites(prev => prev.filter(manga => manga.id !== mangaId));
+    setFavorites(prev => {
+      const updated = prev.filter(manga => manga.id !== mangaId);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(FAVORITES_KEY, JSON.stringify(updated));
+      }
+      return updated;
+    });
   };
 
   const updateFavorite = (mangaId: string, updates: Partial<FavoriteManga>) => {
-    setFavorites(prev => 
-      prev.map(manga => 
-        manga.id === mangaId 
-          ? { ...manga, ...updates }
-          : manga
-      )
-    );
+    setFavorites(prev => {
+      const updated = prev.map(manga =>
+        manga.id === mangaId ? { ...manga, ...updates } : manga
+      );
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(FAVORITES_KEY, JSON.stringify(updated));
+      }
+      return updated;
+    });
   };
 
   const updateReadingStatus = (mangaId: string, status: ReadingStatus) => {
@@ -80,4 +87,26 @@ export function useFavorites() {
     isFavorite,
     getFavoritesByStatus
   };
-} 
+}
+
+type FavoritesContextValue = ReturnType<typeof useFavoritesState>;
+
+const FavoritesContext = createContext<FavoritesContextValue | null>(null);
+
+export function FavoritesProvider({ children }: { children: React.ReactNode }) {
+  const value = useFavoritesState();
+  return (
+    <FavoritesContext.Provider value={value}>
+      {children}
+    </FavoritesContext.Provider>
+  );
+}
+
+export function useFavorites(): FavoritesContextValue {
+  const context = useContext(FavoritesContext);
+  if (!context) {
+    throw new Error('useFavorites must be used within a FavoritesProvider');
+  }
+  return context;
+}
+
