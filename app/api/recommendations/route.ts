@@ -19,10 +19,14 @@ export async function GET(request: Request) {
       try {
         const parsed = JSON.parse(historyCookie.value);
         if (Array.isArray(parsed)) {
-          history = parsed.slice(0, 20).map((id) => String(id));
+          history = Array.from(new Set(parsed))
+            .slice(0, 20)
+            .map((id) => String(id));
         }
       } catch (err) {
-        logger.log('warning', 'Invalid reading_history cookie', { error: String(err) });
+        logger.log('warning', 'Invalid reading_history cookie', {
+          error: String(err),
+        });
       }
     }
 
