@@ -60,6 +60,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Browser instance reused across chapter searches for faster scraping.
 - Common Puppeteer launch arguments moved to a `launchBrowser` utility.
 - New "Nouveautés" section shows latest manga using the MangaDex API.
+- Personalized recommendations via `/api/recommendations` with local caching.
 
 - Rate limiter on `/api/scraper` prevents abusive calls.
 - Search queries are sanitized and only HTTPS requests are allowed.
@@ -73,6 +74,10 @@ When you open a chapter, a progress bar at the top indicates how many pages have
 finished loading compared to the total number of pages. This helps you monitor
 the loading status as you read
 and relies on the `pageCount`/`pages` values returned by the API.
+
+Use the `useRecommendations` hook to display manga suggestions based on the
+reading history stored in a cookie. Results are cached in `localStorage` for one
+hour.
 
 ## Project Setup
 
