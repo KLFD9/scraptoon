@@ -65,6 +65,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Personalized recommendations via `/api/recommendations` with local caching.
 
 - Unit tests verify favorites persistence and recommendation caching.
+- Tests for `useFavorites` wrap the hook with `FavoritesProvider` to mirror app usage.
 - Favorites loaded from `localStorage` on initial render prevent empty favorites
   pages and ensure your list persists across sessions.
 - Recently read manga IDs stored in the `reading_history` cookie (last 20).
