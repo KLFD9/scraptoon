@@ -1,7 +1,12 @@
+import React from 'react';
 import { renderHook, act } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { useFavorites } from '../app/hooks/useFavorites';
+import { useFavorites, FavoritesProvider } from '../app/hooks/useFavorites';
 import type { Manga } from '../app/types/manga';
+
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <FavoritesProvider>{children}</FavoritesProvider>
+);
 
 const SAMPLE_MANGA: Manga = {
   id: 'm1',
@@ -28,13 +33,13 @@ describe('useFavorites', () => {
 
   it('reads favorites from localStorage on mount', () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify([SAMPLE_MANGA]));
-    const { result } = renderHook(() => useFavorites());
+    const { result } = renderHook(() => useFavorites(), { wrapper });
     expect(result.current.favorites).toHaveLength(1);
     expect(result.current.favorites[0].id).toBe('m1');
   });
 
   it('writes favorites to localStorage when updated', () => {
-    const { result } = renderHook(() => useFavorites());
+    const { result } = renderHook(() => useFavorites(), { wrapper });
     act(() => {
       result.current.addToFavorites(SAMPLE_MANGA);
     });

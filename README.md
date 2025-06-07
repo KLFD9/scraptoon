@@ -65,6 +65,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Personalized recommendations via `/api/recommendations` with local caching.
 
 - Unit tests verify favorites persistence and recommendation caching.
+- Tests for `useFavorites` wrap the hook with `FavoritesProvider` to mirror app usage.
 - Favorites loaded from `localStorage` on initial render prevent empty favorites
   pages and ensure your list persists across sessions.
 - Recently read manga IDs stored in the `reading_history` cookie (last 20).
@@ -136,3 +137,7 @@ npx vitest run
 ```
 
 Use the commit message format `<type>(<scope>): <description>` (e.g. `feat(reader): add lazy loading`). Allowed types are `feat`, `fix`, `docs`, `style`, `refactor`, `test`, and `chore`.
+
+## Security Audit
+
+Dependencies are checked regularly with `npm audit`. As of **June 7, 2025**, the audit reports **0 vulnerabilities**. If future audits reveal advisories, apply `npm audit fix` and document any remaining issues here.
