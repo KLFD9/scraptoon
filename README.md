@@ -61,7 +61,9 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Common Puppeteer launch arguments moved to a `launchBrowser` utility.
 - New "Nouveautés" section shows latest manga using the MangaDex API.
 - Personalized recommendations via `/api/recommendations` with local caching.
+
 - Unit tests verify favorites persistence and recommendation caching.
+- Recently read manga IDs stored in the `reading_history` cookie (last 20).
 
 - Rate limiter on `/api/scraper` prevents abusive calls.
 - Search queries are sanitized and only HTTPS requests are allowed.
@@ -76,9 +78,9 @@ finished loading compared to the total number of pages. This helps you monitor
 the loading status as you read
 and relies on the `pageCount`/`pages` values returned by the API.
 
-Use the `useRecommendations` hook to display manga suggestions based on the
-reading history stored in a cookie. Results are cached in `localStorage` for one
-hour.
+Use the `useRecommendations` hook to display manga suggestions. The
+`reading_history` cookie tracks your last 20 mangas and is sent to the API for
+personalized results. Recommendations are cached in `localStorage` for one hour.
 
 ## Project Setup
 
