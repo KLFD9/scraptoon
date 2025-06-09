@@ -1,32 +1,19 @@
-
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  createContext,
-  useContext,
-} from 'react';
+import { useState, useEffect } from 'react';
 import { Manga, FavoriteManga, ReadingStatus } from '../types/manga';
+
 const FAVORITES_KEY = 'mangaScraper_favorites';
 
-function useFavoritesState() {
-  const [favorites, setFavorites] = useState<FavoriteManga[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const saved = localStorage.getItem(FAVORITES_KEY);
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const isInitialMount = useRef(true);
+export function useFavorites() {
+  const [favorites, setFavorites] = useState<FavoriteManga[]>([]);
 
   useEffect(() => {
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(FAVORITES_KEY);
+      setFavorites(saved ? JSON.parse(saved) : []);
     }
+  }, []);
+
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
     }
@@ -46,34 +33,22 @@ function useFavoritesState() {
         }
       };
       
-      const updated = [...prev, newFavorite];
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(FAVORITES_KEY, JSON.stringify(updated));
-      }
-      return updated;
+      return [...prev, newFavorite];
     });
   };
 
   const removeFromFavorites = (mangaId: string) => {
-    setFavorites(prev => {
-      const updated = prev.filter(manga => manga.id !== mangaId);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(FAVORITES_KEY, JSON.stringify(updated));
-      }
-      return updated;
-    });
+    setFavorites(prev => prev.filter(manga => manga.id !== mangaId));
   };
 
   const updateFavorite = (mangaId: string, updates: Partial<FavoriteManga>) => {
-    setFavorites(prev => {
-      const updated = prev.map(manga =>
-        manga.id === mangaId ? { ...manga, ...updates } : manga
-      );
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(FAVORITES_KEY, JSON.stringify(updated));
-      }
-      return updated;
-    });
+    setFavorites(prev => 
+      prev.map(manga => 
+        manga.id === mangaId 
+          ? { ...manga, ...updates }
+          : manga
+      )
+    );
   };
 
   const updateReadingStatus = (mangaId: string, status: ReadingStatus) => {
@@ -105,25 +80,4 @@ function useFavoritesState() {
     isFavorite,
     getFavoritesByStatus
   };
-}
-
-type FavoritesContextValue = ReturnType<typeof useFavoritesState>;
-
-const FavoritesContext = createContext<FavoritesContextValue | null>(null);
-
-export function FavoritesProvider({ children }: { children: React.ReactNode }) {
-  const value = useFavoritesState();
-  return React.createElement(
-    FavoritesContext.Provider,
-    { value },
-    children,
-  );
-}
-
-export function useFavorites(): FavoritesContextValue {
-  const context = useContext(FavoritesContext);
-  if (!context) {
-    throw new Error('useFavorites must be used within a FavoritesProvider');
-  }
-  return context;
-}
+} 
