@@ -12,26 +12,77 @@ interface ModernRecommendationsSectionProps {
   onSearch: (query: string) => void;
 }
 
-const DEFAULT_COVER = '/images/default-cover.svg';
+// Utiliser une image par défaut qui existe dans le projet
+const DEFAULT_COVER = '/vercel.svg';
 
 export default function ModernRecommendationsSection({ onSearch }: ModernRecommendationsSectionProps) {
-  const { recommendations, loading } = useRecommendations(5); // Limit to 5 items for a cleaner look
+  const { recommendations, loading, error } = useRecommendations(5); // Limit to 5 items for a cleaner look
   const { favorites } = useFavorites();
   const [mounted, setMounted] = useState(false);
 
+  // Debug console logs
   useEffect(() => {
+    console.log('ModernRecommendationsSection mounted');
+    console.log('Recommendations:', recommendations);
+    console.log('Loading:', loading);
+    console.log('Error:', error);
     setMounted(true);
-  }, []);
+  }, [recommendations, loading, error]);
 
-  if (!mounted) return null;
-
-  // If there are no recommendations or loading, return null to avoid empty space
-  if (recommendations.length === 0 || loading) {
+  if (!mounted) {
+    console.log('Component not mounted yet');
     return null;
+  }
+  
+  // Always show something, even during loading for debugging
+  console.log('Rendering recommendations section, items:', recommendations.length);
+  // Show a loading state rather than nothing
+  if (loading) {
+    return (
+      <section className="mt-8 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <div className="bg-violet-100 dark:bg-violet-950/30 p-1.5 rounded-md">
+              <Sparkles className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+            </div>
+            <h2 className="text-sm font-medium text-gray-900 dark:text-white">
+              Recommendations pour vous
+            </h2>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-5 gap-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="space-y-2">
+              <div className="aspect-[3/4] bg-gray-800/50 rounded-md animate-pulse"></div>
+              <div className="h-4 bg-gray-800/50 rounded-sm w-3/4 animate-pulse"></div>
+              <div className="h-3 bg-gray-800/50 rounded-sm w-1/2 animate-pulse"></div>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  // If there are actually no recommendations after loading, show a message
+  if (!recommendations.length) {
+    return (
+      <section className="mt-8 mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="bg-violet-100 dark:bg-violet-950/30 p-1.5 rounded-md">
+            <Sparkles className="w-4 h-4 text-violet-600 dark:text-violet-400" />
+          </div>
+          <h2 className="text-sm font-medium text-gray-900 dark:text-white">
+            Recommendations pour vous
+          </h2>
+        </div>
+        <p className="text-sm text-gray-500">Découvrez des titres basés sur vos lectures</p>
+      </section>
+    );
   }
 
   return (
-    <section className="py-6">
+    <section className="mt-8 mb-6">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <div className="bg-violet-100 dark:bg-violet-950/30 p-1.5 rounded-md">
@@ -48,7 +99,7 @@ export default function ModernRecommendationsSection({ onSearch }: ModernRecomme
         )}
       </div>
 
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
         {recommendations.map((manga) => (
           <RecommendationCard 
             key={manga.id} 
