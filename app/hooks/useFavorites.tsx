@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { Manga, FavoriteManga, ReadingStatus } from '../types/manga';
 
