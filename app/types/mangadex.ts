@@ -24,6 +24,8 @@ export interface MangaDexManga {
     year?: string;
     status?: string;
     originalLanguage?: string;
+    lastChapter?: string;
+    contentRating?: 'safe' | 'suggestive' | 'erotica' | 'pornographic';
     links?: Record<string, string>;
     tags: MangaDexTag[];
     availableTranslatedLanguages: string[];

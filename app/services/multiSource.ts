@@ -2,6 +2,7 @@ import { Agent, setGlobalDispatcher, fetch as undiciFetch } from 'undici';
 import { logger } from '../utils/logger';
 import { retry } from '../utils/retry';
 import type { Manga } from '../types/manga';
+import type { MangaDexSearchResponse } from '../types/mangadex';
 import { toomicsSource } from './sources';
 import { launchBrowser } from '../utils/launchBrowser';
 
@@ -18,6 +19,24 @@ interface MangaDexEntry {
     type: string;
     attributes?: { fileName?: string };
   }>;
+}
+
+interface KitsuMangaAttributes {
+  canonicalTitle?: string;
+  synopsis?: string;
+  posterImage?: { original?: string };
+  status?: string;
+  chapterCount?: number;
+}
+
+interface KomgaSeries {
+  id: string;
+  name: string;
+  metadata?: {
+    title?: string;
+    summary?: string;
+  };
+  booksCount?: number;
 }
 
 const concurrentSources = parseInt(process.env.CONCURRENT_SOURCES || '2', 10);
@@ -48,10 +67,12 @@ async function searchMangaDex(query: string): Promise<Manga[]> {
     logger.log('error', 'MangaDex search failed', { status: res.status });
     return [];
   }
-  const data = await res.json();
+  const data = (await res.json()) as MangaDexSearchResponse;
   return (data.data || []).map((m: MangaDexEntry) => {
     const cover = m.relationships?.find(r => r.type === 'cover_art');
-    const coverUrl = cover ? `https://uploads.mangadex.org/covers/${m.id}/${cover.attributes.fileName}` : '';
+    const coverUrl = cover?.attributes?.fileName
+      ? `https://uploads.mangadex.org/covers/${m.id}/${cover.attributes.fileName}`
+      : '';
     const title = m.attributes?.title?.en || Object.values(m.attributes?.title || {})[0] || 'Untitled';
     return {
       id: m.id,
@@ -77,8 +98,8 @@ async function searchKitsu(query: string): Promise<Manga[]> {
     logger.log('error', 'Kitsu search failed', { status: res.status });
     return [];
   }
-  const data = await res.json();
-  return (data.data || []).map((m: { id: string; attributes?: Record<string, unknown> }) => {
+  const data = (await res.json()) as { data?: Array<{ id: string; attributes?: KitsuMangaAttributes }> };
+  return (data.data || []).map((m) => {
     const attr = m.attributes || {};
     return {
       id: `kitsu-${m.id}`,
@@ -105,8 +126,8 @@ async function searchKomga(query: string): Promise<Manga[]> {
     logger.log('error', 'Komga search failed', { status: res.status });
     return [];
   }
-  const data = await res.json();
-  return (data.content || []).map((s: { id: string; name: string; metadata?: Record<string, unknown>; booksCount?: number }) => {
+  const data = (await res.json()) as { content?: KomgaSeries[] };
+  return (data.content || []).map((s: KomgaSeries) => {
     return {
       id: `komga-${s.id}`,
       title: s.metadata?.title || s.name,
@@ -156,7 +177,7 @@ async function searchToomics(query: string): Promise<Manga[]> {
           }
         });
         await new Promise(resolve => setTimeout(resolve, 1000));
-      } catch (e) {
+      } catch {
         // Ignorer les erreurs liées aux popups
       }
 

@@ -50,6 +50,8 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Consistent `logger.log('error')` calls replace `console.error` for structured logging.
 - Unified API response with `pageCount` and `pages` array.
 - Stronger type safety with explicit interfaces replacing `any`.
+- Extended MangaDex type definitions for `lastChapter` and `contentRating`.
+- Multi-source search now validates API responses with stricter typing.
 - Logger interface cleaned up to remove duplicate fields.
 - Header visibility responds to scroll direction while reading.
 - Client-side state initialization avoids hydration mismatches.
