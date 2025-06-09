@@ -1,4 +1,6 @@
-import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+'use client';
+
+import React, { useState, useEffect, createContext, useContext, ReactNode, use } from 'react';
 import { Manga, FavoriteManga, ReadingStatus } from '../types/manga';
 
 const FAVORITES_KEY = 'mangaScraper_favorites';

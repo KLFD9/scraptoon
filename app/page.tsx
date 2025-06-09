@@ -9,6 +9,7 @@ import Layout from './components/Layout';
 import ClientOnly from './components/ClientOnly';
 import { scrapeManga } from './services/scraping.service';
 import { useFavorites } from './hooks/useFavorites';
+import ModernRecommendationsSection from './components/ModernRecommendationsSection';
 import { BookmarkPlus, BookOpen, Search, TrendingUp } from 'lucide-react';
 import { logger } from '@/app/utils/logger';
 import Link from 'next/link';
@@ -130,10 +131,11 @@ export default function Home() {
                   <p className="text-gray-400 text-sm sm:text-base max-w-md mx-auto">
                     Explorez des milliers de titres et reprenez votre lecture où vous l'avez laissée
                   </p>
-                </div>
-
-                {/* Continue Reading */}
+                </div>                {/* Continue Reading */}
                 <ContinueReading />
+                
+                {/* Modern Recommendations Section */}
+                <ModernRecommendationsSection onSearch={handleSearch} />
                 
                 {/* Recherches récentes */}
                 {searchHistory.length > 0 && (

@@ -16,6 +16,7 @@ export function useRecommendations(limit: number = 6) {
       const cached = localStorage.getItem(CACHE_KEY);
       const expiry = localStorage.getItem(CACHE_EXPIRY);
       if (cached && expiry && Date.now() < parseInt(expiry)) {
+        console.log('Recommendations loaded from cache:', JSON.parse(cached)); // Added log
         setRecommendations(JSON.parse(cached));
         setLoading(false);
         return;
@@ -25,6 +26,7 @@ export function useRecommendations(limit: number = 6) {
         throw new Error(`HTTP ${resp.status}`);
       }
       const data = await resp.json();
+      console.log('Recommendations fetched from API:', data); // Added log
       if (!data.success) {
         throw new Error(data.error || 'Erreur inconnue');
       }
