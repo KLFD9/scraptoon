@@ -1,5 +1,7 @@
-import { renderHook, act, waitFor } from '@testing-library/react';
+import React from 'react';
+import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { FavoritesProvider } from '../app/hooks/useFavorites';
 import { useRecommendations } from '../app/hooks/useRecommendations';
 import type { Manga } from '../app/types/manga';
 
@@ -18,6 +20,10 @@ const SAMPLE: Manga[] = [{
 const CACHE_KEY = 'user_recommendations';
 const EXPIRY_KEY = `${CACHE_KEY}_expiry`;
 
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <FavoritesProvider>{children}</FavoritesProvider>
+);
+
 describe('useRecommendations', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -34,11 +40,13 @@ describe('useRecommendations', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
 
-    const { result } = renderHook(() => useRecommendations());
+    const { result } = renderHook(() => useRecommendations(), { wrapper });
     await waitFor(() => fetchMock.mock.calls.length > 0);
     await waitFor(() => result.current.recommendations.length > 0);
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/recommendations?limit=6', { credentials: 'include' });
+    expect(fetchMock).toHaveBeenCalledWith('/api/recommendations', expect.objectContaining({
+      method: 'POST'
+    }));
     expect(result.current.recommendations).toEqual(SAMPLE);
     expect(JSON.parse(localStorage.getItem(CACHE_KEY)!)).toEqual(SAMPLE);
     expect(localStorage.getItem(EXPIRY_KEY)).not.toBeNull();
@@ -50,7 +58,7 @@ describe('useRecommendations', () => {
     const fetchMock = vi.fn();
     vi.stubGlobal('fetch', fetchMock);
 
-    const { result } = renderHook(() => useRecommendations());
+    const { result } = renderHook(() => useRecommendations(), { wrapper });
     await waitFor(() => result.current.recommendations.length > 0);
 
     expect(fetchMock).not.toHaveBeenCalled();

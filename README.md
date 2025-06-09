@@ -65,6 +65,8 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Scraping diagnostics available via `app/scripts/test-scraping.ts` for easier selector tuning.
 - New "Nouveautés" section shows latest manga using the MangaDex API.
 - Personalized recommendations via `/api/recommendations` with local caching.
+- Recommendation engine prioritizes titles by matching favorite authors and
+  excluding those already read.
 
 - Unit tests verify favorites persistence and recommendation caching.
 - Tests for `useFavorites` wrap the hook with `FavoritesProvider` to mirror app usage.
