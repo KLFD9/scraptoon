@@ -23,14 +23,14 @@ export default function FavoritesList({
 }: FavoritesListProps) {
   const router = useRouter();
   const { readingProgress } = useReadingProgress();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [sortBy, setSortBy] = useState<'recent' | 'title' | 'status' | 'progress'>('recent');
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const [editingNote, setEditingNote] = useState<string | null>(null);
-  const [noteText, setNoteText] = useState('');
+  const [noteText, setNoteText] = useState<string>('');
 
   // Filtrage et tri simplifiés
-  const filteredAndSortedFavorites = favorites
+  const filteredAndSortedFavorites: FavoriteManga[] = favorites
     .filter((manga) => {
       if (!searchQuery) return true;
       const query = searchQuery.toLowerCase();
@@ -278,7 +278,7 @@ export default function FavoritesList({
                 {manga.notes && editingNote !== manga.id && (
                   <div className="bg-gray-800/30 rounded-lg p-2 mb-2">
                     <p className="text-xs text-gray-400 line-clamp-2 italic">
-                      "{manga.notes}"
+                      &quot;{manga.notes}&quot;
                     </p>
                   </div>
                 )}
@@ -332,7 +332,7 @@ export default function FavoritesList({
       {/* Message si aucun résultat */}
       {filteredAndSortedFavorites.length === 0 && searchQuery && (
         <div className="text-center py-12">
-          <p className="text-gray-400">Aucun manga trouvé pour "{searchQuery}"</p>
+          <p className="text-gray-400">Aucun manga trouvé pour &quot;{searchQuery}&quot;</p>
         </div>
       )}
 
