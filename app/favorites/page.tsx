@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { JSX, useState } from 'react';
 import { useFavorites } from '@/app/hooks/useFavorites';
 import { useReadingProgress } from '@/app/hooks/useReadingProgress';
 import { Heart, Search, Grid3X3, List, ArrowLeft } from 'lucide-react';
@@ -33,14 +33,9 @@ export default function FavoritesPage() {
         case 'title':
           return a.title.localeCompare(b.title);
         case 'status':
-          const statusOrder: Record<
-            'reading' | 'to-read' | 'completed',
-            number
-          > = { 'reading': 0, 'to-read': 1, 'completed': 2 };
-          const statusA: 'reading' | 'to-read' | 'completed' =
-            a.readingStatus || 'to-read';
-          const statusB: 'reading' | 'to-read' | 'completed' =
-            b.readingStatus || 'to-read';
+          const statusOrder = { 'reading': 0, 'to-read': 1, 'completed': 2 } as const;
+          const statusA = a.readingStatus || 'to-read';
+          const statusB = b.readingStatus || 'to-read';
           return statusOrder[statusA] - statusOrder[statusB];
         case 'progress':
           const progressA = readingProgress.find(
