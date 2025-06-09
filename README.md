@@ -126,6 +126,22 @@ Execute unit tests with [Vitest](https://vitest.dev):
 npx vitest
 ```
 
+### Standalone test scripts
+
+These scripts validate client logic without a browser. Run them with Node:
+
+```bash
+node test-chapters-sorting.js
+node test-language-navigation.js
+node test-reading-logic.js
+```
+
+`test-chapters-sorting.js` checks chapter sorting and pagination from the API.
+`test-language-navigation.js` verifies the `useChapterNavigation` logic with
+multiple languages.
+`test-reading-logic.js` ensures the reading order is correct even when chapters
+are unsorted.
+
 ## Contributing
 
 Before committing, lint the project and check for vulnerabilities:
