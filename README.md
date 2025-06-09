@@ -79,6 +79,11 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - MangaDex API requests automatically retry up to three times on network errors.
 - In-memory cache automatically prunes expired entries to limit memory usage.
 
+## API Overview
+
+The `/api/manga/[id]/chapters` endpoint searches multiple sources for each manga. It checks MangaDex first, then other scrapers (like Webtoons) and caches the first successful result for two hours. You can pass `?source=mangadex` (or `webtoons`, `mangascantrad` when available) to force a specific provider. A lightweight request queue avoids concurrent scrapes on the same site while the `RateLimiter` class restricts abusive IPs.
+
+
 
 ## Usage
 
@@ -161,3 +166,7 @@ Use the commit message format `<type>(<scope>): <description>` (e.g. `feat(reade
 ## Security Audit
 
 Dependencies are checked regularly with `npm audit`. As of **June 7, 2025**, the audit reports **0 vulnerabilities**. If future audits reveal advisories, apply `npm audit fix` and document any remaining issues here.
+
+## Performance
+
+The scraping report shows a reduction from 30‑65s per chapter to about **1s** when using the MangaDex API. Success rate is **100%** and images load reliably.

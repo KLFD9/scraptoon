@@ -802,6 +802,7 @@ export async function GET(
     const limit = Math.max(1, parseInt(searchParams.get('limit') || '10'));
     const getAll = searchParams.get('all') === 'true';
     const sortBy = searchParams.get('sort') || 'chapter-asc';
+    const preferredSource = searchParams.get('source') || undefined;
 
     logger.log('debug', 'Paramètres de pagination', {
       page,
@@ -895,21 +896,26 @@ export async function GET(
       );
     }
 
-    // Récupérer les chapitres de la première source disponible
-    const firstSource = sourceResults[0];
+    // Choisir la source à utiliser en fonction du paramètre "source"
+    let selectedSource = sourceResults[0];
+    if (preferredSource) {
+      const found = sourceResults.find(r => r.source === preferredSource);
+      if (found) selectedSource = found;
+    }
+
     logger.log('info', 'Tentative de récupération des chapitres', {
-      source: firstSource.source,
-      titleId: firstSource.titleId,
-      url: firstSource.url
+      source: selectedSource.source,
+      titleId: selectedSource.titleId,
+      url: selectedSource.url
     });
 
-    const { chapters: allChapters, totalChapters } = await firstSource.sourceObj.getChapters(
-      firstSource.titleId,
-      firstSource.url
+    const { chapters: allChapters, totalChapters } = await selectedSource.sourceObj.getChapters(
+      selectedSource.titleId,
+      selectedSource.url
     );
 
     logger.log('info', 'Chapitres récupérés avec succès', {
-      source: firstSource.source,
+      source: selectedSource.source,
       chaptersCount: allChapters.length,
       totalChapters,
       firstChapter: allChapters[0],
@@ -921,9 +927,9 @@ export async function GET(
       chapters: allChapters,
       totalChapters,
       source: {
-        name: firstSource.source,
-        url: firstSource.url,
-        titleId: firstSource.titleId
+        name: selectedSource.source,
+        url: selectedSource.url,
+        titleId: selectedSource.titleId
       }
     };
     
@@ -940,9 +946,9 @@ export async function GET(
         chapters: sortedChapters,
         totalChapters,
         source: {
-          name: firstSource.source,
-          url: firstSource.url,
-          titleId: firstSource.titleId
+          name: selectedSource.source,
+          url: selectedSource.url,
+          titleId: selectedSource.titleId
         }
       });
     }
