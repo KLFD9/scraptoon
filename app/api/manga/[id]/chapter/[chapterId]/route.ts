@@ -4,11 +4,18 @@ import { launchBrowser } from '@/app/utils/launchBrowser';
 import { Cache } from '@/app/utils/cache';
 import { retry } from '@/app/utils/retry';
 import { logger } from '@/app/utils/logger';
+import { RequestQueue } from '@/app/utils/requestQueue';
 
 
 // Préférer l'API MangaDex puis basculer sur Puppeteer en secours
 // Cache pour les images de chapitres (1 heure)
 const cache = new Cache<ChapterResult>(3600000);
+const queue = new RequestQueue({
+  maxConcurrent: Number(process.env.MAX_QUEUE_CONCURRENT ?? 3),
+  maxQueueSize: Number(process.env.MAX_QUEUE_SIZE ?? 50)
+});
+const RETRY_ATTEMPTS = Number(process.env.RETRY_ATTEMPTS ?? 3);
+const RETRY_DELAY = Number(process.env.RETRY_BASE_DELAY ?? 1000);
 
 // Navigateur Puppeteer réutilisé entre les appels
 let browserPromise: Promise<Browser> | null = null;
@@ -32,8 +39,8 @@ async function getMangaDexChapterImages(
         fetch(
           `https://api.mangadex.org/at-home/server/${encodeURIComponent(chapterId)}`,
         ),
-      3,
-      1000,
+      RETRY_ATTEMPTS,
+      RETRY_DELAY,
     );
     if (!res.ok) {
       console.log(
@@ -376,7 +383,7 @@ async function scrapeImagesRobust(
   }
 }
 
-export async function GET(
+async function handleGet(
   request: NextRequest,
   { params }: { params: { id: string; chapterId: string } }
 ): Promise<NextResponse> {
@@ -402,8 +409,8 @@ export async function GET(
         fetch(
           `https://api.mangadex.org/manga/${encodeURIComponent(mangaId)}?includes[]=author&includes[]=artist&includes[]=cover_art`,
         ),
-      3,
-      1000,
+      RETRY_ATTEMPTS,
+      RETRY_DELAY,
     );
     
     if (!mangaResponse.ok) {
@@ -419,8 +426,8 @@ export async function GET(
         fetch(
           `https://api.mangadex.org/chapter/${encodeURIComponent(chapterId)}?includes[]=scanlation_group&includes[]=user`,
         ),
-      3,
-      1000,
+      RETRY_ATTEMPTS,
+      RETRY_DELAY,
     );
     
     if (!chapterResponse.ok) {
@@ -511,8 +518,8 @@ export async function GET(
     try {
       const mangaResponse = await retry(
         () => fetch(`https://api.mangadex.org/manga/${mangaId}?includes[]=cover_art`),
-        3,
-        1000
+        RETRY_ATTEMPTS,
+        RETRY_DELAY
       );
       if (mangaResponse.ok) {
         const mangaData = await mangaResponse.json();
@@ -560,4 +567,11 @@ export async function GET(
       { status: 500 }
     );
   }
+}
+
+export async function GET(
+  request: NextRequest,
+  context: { params: { id: string; chapterId: string } }
+): Promise<NextResponse> {
+  return queue.add(() => handleGet(request, context));
 }
