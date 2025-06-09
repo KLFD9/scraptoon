@@ -443,6 +443,63 @@ const webtoonSource: Source = {
   }
 };
 
+const komgaSource: Source = {
+  name: 'komga',
+  baseUrl: process.env.KOMGA_URL || '',
+  search: async (title: string) => {
+    try {
+      if (!process.env.KOMGA_URL) {
+        return { titleId: null, url: null };
+      }
+      const searchUrl = `${process.env.KOMGA_URL.replace(/\/$/, '')}/api/v1/series?search=${encodeURIComponent(title)}`;
+      const res = await retry(() => fetch(searchUrl), 3, 1000);
+      if (!res.ok) return { titleId: null, url: null };
+      const data = await res.json();
+      const first = (data.content || [])[0];
+      if (!first) return { titleId: null, url: null };
+      return {
+        titleId: first.id,
+        url: `${process.env.KOMGA_URL.replace(/\/$/, '')}/series/${first.id}`
+      };
+    } catch (error) {
+      logger.log('error', 'Erreur lors de la recherche sur Komga', {
+        error: error instanceof Error ? error.message : 'Erreur inconnue'
+      });
+      return { titleId: null, url: null };
+    }
+  },
+  getChapters: async (titleId: string, url: string): Promise<ChaptersResult> => {
+    if (!process.env.KOMGA_URL) {
+      throw new Error('KOMGA_URL not configured');
+    }
+    try {
+      const chaptersUrl = `${process.env.KOMGA_URL.replace(/\/$/, '')}/api/v1/series/${titleId}/books?size=1000`;
+      const res = await retry(() => fetch(chaptersUrl), 3, 1000);
+      if (!res.ok) throw new Error('Aucun chapitre trouvé');
+      const data = await res.json();
+      const chapters = (data.content || []).map((book: any) => ({
+        id: book.id,
+        chapter: book.metadata?.number ? `Chapitre ${book.metadata.number}` : book.name,
+        title: book.metadata?.title || null,
+        publishedAt: book.metadata?.releaseDate || null,
+        url: `${process.env.KOMGA_URL.replace(/\/$/, '')}/book/${book.id}/read`,
+        source: 'komga'
+      }));
+      return {
+        chapters,
+        totalChapters: chapters.length,
+        source: { name: 'komga', url, titleId }
+      };
+    } catch (error) {
+      logger.log('error', 'Erreur lors de la récupération des chapitres sur Komga', {
+        error: error instanceof Error ? error.message : 'Erreur inconnue',
+        titleId
+      });
+      throw error;
+    }
+  }
+};
+
 
 // Source MangaScantrad
 const mangaScantradSource: Source = {
@@ -738,7 +795,8 @@ const mangadexSource: Source = {
 // Liste des sources disponibles
 const sources: Source[] = [
   mangadexSource,
-  webtoonSource
+  webtoonSource,
+  komgaSource
   // Retrait temporaire de mangaScantrad à cause de Cloudflare
   // mangaScantradSource
 ];
@@ -895,21 +953,32 @@ export async function GET(
       );
     }
 
-    // Récupérer les chapitres de la première source disponible
-    const firstSource = sourceResults[0];
-    logger.log('info', 'Tentative de récupération des chapitres', {
-      source: firstSource.source,
-      titleId: firstSource.titleId,
-      url: firstSource.url
+    logger.log('info', 'Récupération des chapitres en parallèle', {
+      sources: sourceResults.map(r => r.source)
     });
 
-    const { chapters: allChapters, totalChapters } = await firstSource.sourceObj.getChapters(
-      firstSource.titleId,
-      firstSource.url
+    const chapterPromises = sourceResults.map(r =>
+      r.sourceObj.getChapters(r.titleId, r.url).then(data => ({
+        ...data,
+        source: { name: r.source, url: r.url, titleId: r.titleId }
+      }))
     );
 
+    let resultData: { chapters: ChapterData[]; totalChapters: number; source: SourceInfo };
+    try {
+      resultData = await Promise.any(chapterPromises);
+    } catch {
+      logger.log('error', 'Échec de toutes les sources', { mangaId });
+      return NextResponse.json(
+        { error: 'Aucune source valide' },
+        { status: 500 }
+      );
+    }
+
+    const { chapters: allChapters, totalChapters, source } = resultData;
+
     logger.log('info', 'Chapitres récupérés avec succès', {
-      source: firstSource.source,
+      source: source.name,
       chaptersCount: allChapters.length,
       totalChapters,
       firstChapter: allChapters[0],
@@ -917,17 +986,13 @@ export async function GET(
     });
 
     // Sauvegarder dans le cache
-    const resultData = {
+    const cachePayload = {
       chapters: allChapters,
       totalChapters,
-      source: {
-        name: firstSource.source,
-        url: firstSource.url,
-        titleId: firstSource.titleId
-      }
+      source
     };
-    
-    await chaptersCache.set(cacheKey, resultData);
+
+    await chaptersCache.set(cacheKey, cachePayload);
     logger.log('debug', 'Données mises en cache', {
       mangaId,
       cacheKey
@@ -939,15 +1004,11 @@ export async function GET(
       return NextResponse.json({
         chapters: sortedChapters,
         totalChapters,
-        source: {
-          name: firstSource.source,
-          url: firstSource.url,
-          titleId: firstSource.titleId
-        }
+        source
       });
     }
 
-    const response = formatResponse(resultData, page, limit, sortBy);
+    const response = formatResponse(cachePayload, page, limit, sortBy);
     const executionTime = Date.now() - startTime;
     
     logger.log('info', 'Requête terminée avec succès', {
