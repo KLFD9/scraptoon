@@ -1,3 +1,4 @@
+
 import React, {
   useState,
   useEffect,
@@ -126,4 +127,3 @@ export function useFavorites(): FavoritesContextValue {
   }
   return context;
 }
-

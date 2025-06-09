@@ -27,4 +27,4 @@ export interface FavoriteManga extends Manga {
   readingStatus?: 'to-read' | 'reading' | 'completed';
 }
 
-export type ReadingStatus = 'to-read' | 'reading' | 'completed'; 
+export type ReadingStatus = 'to-read' | 'reading' | 'completed';

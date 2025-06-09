@@ -58,13 +58,16 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Configuration unified under `next.config.ts` with custom image patterns and API rewrites.
 
 - Chapter images fetched via the MangaDex API with cached results (fallback to scraping).
+- Chapter API endpoint `/api/manga/[id]/chapter/[chapterId]` replaces the deprecated `route-old.ts` file.
 - Manga details cached for an hour to minimize API calls.
 - Browser instance reused across chapter searches for faster scraping.
 - Common Puppeteer launch arguments moved to a `launchBrowser` utility.
+- Scraping diagnostics available via `app/scripts/test-scraping.ts` for easier selector tuning.
 - New "Nouveautés" section shows latest manga using the MangaDex API.
 - Personalized recommendations via `/api/recommendations` with local caching.
 
 - Unit tests verify favorites persistence and recommendation caching.
+- Tests for `useFavorites` wrap the hook with `FavoritesProvider` to mirror app usage.
 - Favorites loaded from `localStorage` on initial render prevent empty favorites
   pages and ensure your list persists across sessions.
 - Graceful localStorage fallback avoids errors if saved favorites are malformed.
@@ -72,6 +75,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 - Rate limiter on `/api/scraper` prevents abusive calls.
 - Search queries are sanitized and only HTTPS requests are allowed.
+- The `Strict-Transport-Security` header enforces HTTPS for two years across all subdomains.
 - MangaDex API requests automatically retry up to three times on network errors.
 - In-memory cache automatically prunes expired entries to limit memory usage.
 
@@ -126,6 +130,22 @@ Execute unit tests with [Vitest](https://vitest.dev):
 npx vitest
 ```
 
+### Standalone test scripts
+
+These scripts validate client logic without a browser. Run them with Node:
+
+```bash
+node test-chapters-sorting.js
+node test-language-navigation.js
+node test-reading-logic.js
+```
+
+`test-chapters-sorting.js` checks chapter sorting and pagination from the API.
+`test-language-navigation.js` verifies the `useChapterNavigation` logic with
+multiple languages.
+`test-reading-logic.js` ensures the reading order is correct even when chapters
+are unsorted.
+
 ## Contributing
 
 Before committing, lint the project and check for vulnerabilities:
@@ -137,3 +157,7 @@ npx vitest run
 ```
 
 Use the commit message format `<type>(<scope>): <description>` (e.g. `feat(reader): add lazy loading`). Allowed types are `feat`, `fix`, `docs`, `style`, `refactor`, `test`, and `chore`.
+
+## Security Audit
+
+Dependencies are checked regularly with `npm audit`. As of **June 7, 2025**, the audit reports **0 vulnerabilities**. If future audits reveal advisories, apply `npm audit fix` and document any remaining issues here.
