@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   try {
     const { favorites = [], limit = 6 } = await request.json().catch(() => ({}));
     const cookieStore = cookies();
-    const historyCookie = cookieStore.get('reading_history');
+    const historyCookie = (await cookieStore).get('reading_history');
     let history: string[] = [];
     if (historyCookie) {
       try {
@@ -92,7 +92,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const limit = Number(searchParams.get('limit') || '6');
     const cookieStore = cookies();
-    const historyCookie = cookieStore.get('reading_history');
+    const historyCookie = (await cookieStore).get('reading_history');
     let history: string[] = [];
     if (historyCookie) {
       try {
