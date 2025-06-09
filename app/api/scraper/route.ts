@@ -3,6 +3,7 @@ import { logger } from '@/app/utils/logger';
 import { Cache } from '@/app/utils/cache';
 import { RateLimiter } from '@/app/utils/rateLimiter';
 import { retry } from '@/app/utils/retry';
+import { searchMultiSource } from '@/app/services/multiSource';
 import type {
   MangaDexChaptersResponse,
   MangaDexManga,
@@ -69,6 +70,21 @@ export async function POST(request: Request) {
       query: sanitizedQuery,
       timestamp: new Date().toISOString()
     });
+
+    const aggregated = await searchMultiSource(sanitizedQuery);
+    if (aggregated.length > 0) {
+      await cache.set(cacheKey, aggregated);
+      logger.log('info', 'Multi-source results', { query: sanitizedQuery, resultsCount: aggregated.length });
+      return Response.json({
+        success: true,
+        results: aggregated,
+        metadata: {
+          totalResults: aggregated.length,
+          source: 'multi',
+          cached: false,
+        },
+      });
+    }
 
     // Construction des paramètres de recherche
     const params = new URLSearchParams();
