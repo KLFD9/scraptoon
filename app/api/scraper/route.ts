@@ -71,9 +71,7 @@ async function handlePost(request: Request) {
           cached: true
         }
       });
-    }
-
-    logger.log('debug', 'Début de la recherche', {
+    }    logger.log('debug', 'Début de la recherche', {
       query: sanitizedQuery,
       timestamp: new Date().toISOString()
     });
@@ -81,7 +79,10 @@ async function handlePost(request: Request) {
     const aggregated = await searchMultiSource(sanitizedQuery);
     if (aggregated.length > 0) {
       await cache.set(cacheKey, aggregated);
-      logger.log('info', 'Multi-source results', { query: sanitizedQuery, resultsCount: aggregated.length });
+      logger.log('info', 'Multi-source results (MangaDex, Kitsu, Komga, Toomics)', { 
+        query: sanitizedQuery, 
+        resultsCount: aggregated.length 
+      });
       return Response.json({
         success: true,
         results: aggregated,

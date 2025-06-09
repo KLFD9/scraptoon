@@ -97,8 +97,44 @@ interface ChapterResult {
 }
 
 // Configuration améliorée avec sélecteurs plus génériques
-const SCRAPING_CONFIGS: Record<string, ScrapingConfig[]> = {
-  fr: [
+const SCRAPING_CONFIGS: Record<string, ScrapingConfig[]> = {  fr: [
+    {
+      name: 'toomics-fr',
+      urlPattern: (slug: string) => {
+        return `https://toomics.com/fr/webtoon/search?q=${encodeURIComponent(slug)}`;
+      },
+      selectors: {
+        container: '.comic-viewer, .viewer-container, .episode-container, .toon-viewer',
+        images: [
+          'img.comic-image',
+          'img.episode-image',
+          'img.toon-image',
+          'img[src*="toomics"]',
+          'img[data-src*="toomics"]',
+          '.comic-viewer img',
+          '.episode-container img',
+          'img:not([src*="icon"]):not([src*="logo"]):not([src*="banner"])'
+        ],
+        lazyLoad: {
+          attribute: 'data-src',
+          scrollStep: 800,
+          maxScrolls: 50,
+          beforeScroll: async (page) => {
+            // Gestion des popup de vérification d'âge ou consentement
+            try {
+              await page.evaluate(() => {
+                const buttons = document.querySelectorAll('button.consent-popup, button.age-confirm, .btn-confirm');
+                if (buttons.length > 0) {
+                  (buttons[0] as HTMLElement).click();
+                }
+              });
+            } catch (e) {
+              // Ignorer les erreurs
+            }
+          }
+        }
+      }
+    },
     {
       name: 'webtoons-fr',
       urlPattern: (slug: string) => {

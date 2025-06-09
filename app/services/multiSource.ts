@@ -2,6 +2,8 @@ import { Agent, setGlobalDispatcher, fetch as undiciFetch } from 'undici';
 import { logger } from '../utils/logger';
 import { retry } from '../utils/retry';
 import type { Manga } from '../types/manga';
+import { toomicsSource } from './sources';
+import { launchBrowser } from '../utils/launchBrowser';
 
 interface MangaDexEntry {
   id: string;
@@ -122,8 +124,104 @@ async function searchKomga(query: string): Promise<Manga[]> {
   });
 }
 
+async function searchToomics(query: string): Promise<Manga[]> {
+  try {
+    // Utiliser notre source Toomics déjà configurée
+    const result = await toomicsSource.search(query);
+    
+    if (!result.titleId || !result.url) {
+      return [];
+    }
+
+    // Récupérer les détails du manga
+    const baseUrl = result.url;
+    const browser = await launchBrowser();
+    const page = await browser.newPage();
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36');
+    
+    try {
+      await page.goto(baseUrl, { waitUntil: 'networkidle0', timeout: 30000 });
+      
+      // Gérer les éventuels popups de consentement ou vérification d'âge
+      try {
+        await page.evaluate(() => {
+          const consentButtons = document.querySelectorAll('.cookie-confirm, .consent-popup .confirm, button.accept-all');
+          if (consentButtons.length > 0) {
+            (consentButtons[0] as HTMLElement).click();
+          }
+          
+          const ageButtons = document.querySelectorAll('.btn-confirm, .age-verification-button');
+          if (ageButtons.length > 0) {
+            (ageButtons[0] as HTMLElement).click();
+          }
+        });
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (e) {
+        // Ignorer les erreurs liées aux popups
+      }
+
+      // Extraire les métadonnées du manga
+      const mangaData = await page.evaluate(() => {
+        const title = document.querySelector('.series-title, .comic-title, h1')?.textContent?.trim() || '';
+        const description = document.querySelector('.series-desc, .summary, .description')?.textContent?.trim() || '';
+        const cover = document.querySelector('.series-cover img, .comic-cover img')?.getAttribute('src') || '';
+        const status = document.querySelector('.series-status, .status')?.textContent?.toLowerCase().includes('ongoing') ? 'ongoing' : 'completed';
+        const typeEl = document.querySelector('.series-type, .comic-type, .genre');
+        const typeText = typeEl?.textContent?.toLowerCase() || '';
+        
+        let type = 'manga';
+        if (typeText.includes('manhwa') || typeText.includes('korean')) {
+          type = 'manhwa';
+        } else if (typeText.includes('manhua') || typeText.includes('chinese')) {
+          type = 'manhua';
+        }
+        
+        return { title, description, cover, status, type };
+      });
+
+      await page.close();
+      
+      // Créer l'objet manga
+      const mangaType = (mangaData.type === 'manhwa' || mangaData.type === 'manhua') 
+        ? mangaData.type 
+        : 'manga';
+        
+      const mangaStatus = mangaData.status === 'ongoing' ? 'ongoing' : 'completed';
+        return [{
+        id: `toomics-${result.titleId}`,
+        title: mangaData.title,
+        description: mangaData.description,
+        cover: mangaData.cover,
+        url: baseUrl,
+        type: mangaType,
+        status: mangaStatus,
+        lastChapter: '?',
+        chapterCount: {
+          french: 0,
+          total: 0
+        }
+      }];
+      
+    } catch (error) {
+      logger.log('error', 'Toomics data extraction failed', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        query 
+      });
+      await page.close();
+      return [];
+    }
+  } catch (error) {
+    logger.log('error', 'Toomics search failed', { 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      query 
+    });
+    return [];
+  }
+}
+
 export async function searchMultiSource(query: string): Promise<Manga[]> {
-  const sources = [searchMangaDex, searchKitsu, searchKomga];
+  // Ajouter Toomics à la liste des sources
+  const sources = [searchMangaDex, searchKitsu, searchKomga, searchToomics];
   const results: Manga[] = [];
   for (let i = 0; i < sources.length; i += concurrentSources) {
     const slice = sources.slice(i, i + concurrentSources);

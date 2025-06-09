@@ -8,6 +8,7 @@ import type {
   MangaDexChapter,
   MangaDexChaptersResponse
 } from '@/app/types/mangadex';
+import { toomicsSource } from '@/app/services/sources';
 
 // Types pour le cache des chapitres
 interface ChaptersCacheData extends ChaptersResult {
@@ -469,11 +470,12 @@ const komgaSource: Source = {
     }
   },
   getChapters: async (titleId: string, url: string): Promise<ChaptersResult> => {
-    if (!process.env.KOMGA_URL) {
+    const komgaBaseUrl = process.env.KOMGA_URL;
+    if (!komgaBaseUrl) {
       throw new Error('KOMGA_URL not configured');
     }
     try {
-      const chaptersUrl = `${process.env.KOMGA_URL.replace(/\/$/, '')}/api/v1/series/${titleId}/books?size=1000`;
+      const chaptersUrl = `${komgaBaseUrl.replace(/\/$/, '')}/api/v1/series/${titleId}/books?size=1000`;
       const res = await retry(() => fetch(chaptersUrl), 3, 1000);
       if (!res.ok) throw new Error('Aucun chapitre trouvé');
       const data = await res.json();
@@ -482,7 +484,7 @@ const komgaSource: Source = {
         chapter: book.metadata?.number ? `Chapitre ${book.metadata.number}` : book.name,
         title: book.metadata?.title || null,
         publishedAt: book.metadata?.releaseDate || null,
-        url: `${process.env.KOMGA_URL.replace(/\/$/, '')}/book/${book.id}/read`,
+        url: `${komgaBaseUrl.replace(/\/$/, '')}/book/${book.id}/read`,
         source: 'komga'
       }));
       return {
@@ -796,7 +798,8 @@ const mangadexSource: Source = {
 const sources: Source[] = [
   mangadexSource,
   webtoonSource,
-  komgaSource
+  komgaSource,
+  toomicsSource
   // Retrait temporaire de mangaScantrad à cause de Cloudflare
   // mangaScantradSource
 ];
@@ -951,10 +954,8 @@ export async function GET(
         { error: 'Manga non trouvé sur aucune source disponible' },
         { status: 404 }
       );
-    }
-
-    logger.log('info', 'Récupération des chapitres en parallèle', {
-      sources: sourceResults.map(r => r.source)
+    }    logger.log('info', 'Récupération des chapitres en parallèle', {
+      source: sourceResults.map(r => r.source).join(', ')
     });
 
     const chapterPromises = sourceResults.map(r =>
