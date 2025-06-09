@@ -162,12 +162,13 @@ async function handlePost(request: Request) {
     }
 
     // Transformation des résultats
-    const results: Manga[] = await Promise.all(data.data.map(async (manga: MangaDexManga) => {
-      try {
-        // Récupération de la couverture
-        const cover = manga.relationships?.find((rel: MangaDexRelationship) => rel.type === 'cover_art');
-        const author = manga.relationships?.find((rel: MangaDexRelationship) => rel.type === 'author');
-        const artist = manga.relationships?.find((rel: MangaDexRelationship) => rel.type === 'artist');
+    const rawResults: Array<Manga | null> = await Promise.all(
+      data.data.map(async (manga: MangaDexManga) => {
+        try {
+          // Récupération de la couverture
+          const cover = manga.relationships?.find((rel: MangaDexRelationship) => rel.type === 'cover_art');
+          const author = manga.relationships?.find((rel: MangaDexRelationship) => rel.type === 'author');
+          const artist = manga.relationships?.find((rel: MangaDexRelationship) => rel.type === 'artist');
         
         // Récupération du nombre total de chapitres depuis les attributs du manga
         const totalChapters = manga.attributes?.lastChapter 
@@ -246,14 +247,17 @@ async function handlePost(request: Request) {
           isAvailableInFrench,
           originalLanguage
         };
-  } catch (error) {
-        logger.log('error', 'Erreur lors de la transformation du manga', {
-          mangaId: manga.id,
-      error: error instanceof Error ? error.message : 'Erreur inconnue'
-    });
-        return null;
-      }
-    })).then(results => results.filter((manga: Manga | null): manga is Manga => manga !== null));
+        } catch (error) {
+          logger.log('error', 'Erreur lors de la transformation du manga', {
+            mangaId: manga.id,
+            error: error instanceof Error ? error.message : 'Erreur inconnue',
+          });
+          return null;
+        }
+      })
+    );
+
+    const results: Manga[] = rawResults.filter((manga): manga is Manga => manga !== null);
 
     // Mise en cache des résultats
     await cache.set(cacheKey, results);
