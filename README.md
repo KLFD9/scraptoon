@@ -80,6 +80,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - In-memory cache automatically prunes expired entries to limit memory usage.
 - Multi-source search aggregates MangaDex, Kitsu and Komga before falling back to scraping.
 - Connection pooling via `undici` enables HTTP/2 requests with configurable concurrency.
+- Request queue ensures a controlled number of concurrent scraping jobs with configurable backoff.
 
 
 ## Usage
@@ -105,14 +106,20 @@ npm install
 
 ### Environment variables
 
-Create a `.env.local` file to configure your Redis instance. The application uses `REDIS_URL`, falling back to `redis://localhost:6379` if not provided:
+Create a `.env.local` file to configure your Redis instance and scraper settings. The application uses `REDIS_URL`, falling back to `redis://localhost:6379` if not provided:
 
 ```bash
 # .env.local
 REDIS_URL=redis://localhost:6379
 CONCURRENT_SOURCES=2
 CONCURRENT_PAGES=6
+MAX_QUEUE_CONCURRENT=3
+MAX_QUEUE_SIZE=50
+RETRY_ATTEMPTS=3
+RETRY_BASE_DELAY=1000
 ```
+
+`MAX_QUEUE_CONCURRENT` controls how many scraping jobs run in parallel, while `MAX_QUEUE_SIZE` limits the number of queued requests. `RETRY_ATTEMPTS` and `RETRY_BASE_DELAY` tune the exponential backoff used when fetching chapters fails.
 
 ## Testing
 

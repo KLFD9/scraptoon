@@ -4,6 +4,7 @@ import { Cache } from '@/app/utils/cache';
 import { RateLimiter } from '@/app/utils/rateLimiter';
 import { retry } from '@/app/utils/retry';
 import { searchMultiSource } from '@/app/services/multiSource';
+import { RequestQueue } from '@/app/utils/requestQueue';
 import type {
   MangaDexChaptersResponse,
   MangaDexManga,
@@ -16,6 +17,12 @@ import type {
 const CACHE_DURATION = 5 * 60 * 1000;
 const cache = new Cache<Manga[]>(CACHE_DURATION);
 const rateLimiter = new RateLimiter(30, 60_000);
+const queue = new RequestQueue({
+  maxConcurrent: Number(process.env.MAX_QUEUE_CONCURRENT ?? 3),
+  maxQueueSize: Number(process.env.MAX_QUEUE_SIZE ?? 50)
+});
+const RETRY_ATTEMPTS = Number(process.env.RETRY_ATTEMPTS ?? 3);
+const RETRY_DELAY = Number(process.env.RETRY_BASE_DELAY ?? 1000);
 
 const fetchHttps = (url: string, options?: RequestInit) => {
   if (!url.startsWith('https://')) {
@@ -24,7 +31,7 @@ const fetchHttps = (url: string, options?: RequestInit) => {
   return fetch(url, options);
 };
 
-export async function POST(request: Request) {
+async function handlePost(request: Request) {
   try {
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'global';
 
@@ -129,8 +136,8 @@ export async function POST(request: Request) {
             'Accept': 'application/json',
           }
         }),
-      3,
-      1000,
+      RETRY_ATTEMPTS,
+      RETRY_DELAY,
     );
 
     if (!response.ok) {
@@ -172,8 +179,8 @@ export async function POST(request: Request) {
             fetchHttps(
               `https://api.mangadex.org/manga/${manga.id}/feed?limit=0&translatedLanguage[]=fr&includes[]=scanlation_group&order[chapter]=desc`
             ),
-          3,
-          1000,
+          RETRY_ATTEMPTS,
+          RETRY_DELAY,
         );
         const chaptersData: MangaDexChaptersResponse = await chaptersResponse.json();
         
@@ -279,4 +286,8 @@ export async function POST(request: Request) {
       results: []
     }, { status: 500 });
   }
-} 
+}
+
+export async function POST(request: Request) {
+  return queue.add(() => handlePost(request));
+}

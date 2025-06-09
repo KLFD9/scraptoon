@@ -11,7 +11,7 @@ export async function retry<T>(
     } catch (error) {
       lastError = error as Error;
       if (attempt === maxAttempts) break;
-      await new Promise(resolve => setTimeout(resolve, delay * attempt));
+      await new Promise(resolve => setTimeout(resolve, delay * 2 ** (attempt - 1)));
     }
   }
   
