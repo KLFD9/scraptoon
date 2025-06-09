@@ -78,6 +78,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - The `Strict-Transport-Security` header enforces HTTPS for two years across all subdomains.
 - MangaDex API requests automatically retry up to three times on network errors.
 - In-memory cache automatically prunes expired entries to limit memory usage.
+
 - Multi-source search aggregates MangaDex, Kitsu and Komga before falling back to scraping.
 - Connection pooling via `undici` enables HTTP/2 requests with configurable concurrency.
 - Request queue ensures a controlled number of concurrent scraping jobs with configurable backoff.
