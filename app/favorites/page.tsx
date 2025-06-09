@@ -32,9 +32,13 @@ export default function FavoritesPage() {
         case 'title':
           return a.title.localeCompare(b.title);
         case 'status':
-          const statusOrder = { 'reading': 0, 'to-read': 1, 'completed': 2 } as const;
-          const statusA = a.readingStatus || 'to-read';
-          const statusB = b.readingStatus || 'to-read';
+          const statusOrder: Record<ReadingStatus, number> = {
+            reading: 0,
+            'to-read': 1,
+            completed: 2
+          };
+          const statusA: ReadingStatus = a.readingStatus || 'to-read';
+          const statusB: ReadingStatus = b.readingStatus || 'to-read';
           return statusOrder[statusA] - statusOrder[statusB];
         case 'progress':
           const progressA = readingProgress.find(p => p.mangaId === a.id);
