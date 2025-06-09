@@ -7,16 +7,17 @@ import { Heart, Search, Grid3X3, List, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import FavoriteCard from '@/app/components/FavoriteCard';
 import FavoriteListItem from '@/app/components/FavoriteListItem';
+import type { FavoriteManga } from '@/app/types/manga';
 
 export default function FavoritesPage() {
   const { favorites, removeFromFavorites, updateReadingStatus, addNote } = useFavorites();
   const { readingProgress } = useReadingProgress();
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'recent' | 'title' | 'status' | 'progress'>('recent');
 
   // Filtrage et tri
-  const filteredAndSortedFavorites = favorites
+  const filteredAndSortedFavorites: FavoriteManga[] = favorites
     .filter((manga) => {
       if (!searchQuery) return true;
       const query = searchQuery.toLowerCase();
@@ -32,22 +33,35 @@ export default function FavoritesPage() {
         case 'title':
           return a.title.localeCompare(b.title);
         case 'status':
-          const statusOrder = { 'reading': 0, 'to-read': 1, 'completed': 2 } as const;
-          const statusA = a.readingStatus || 'to-read';
-          const statusB = b.readingStatus || 'to-read';
+          const statusOrder: Record<
+            'reading' | 'to-read' | 'completed',
+            number
+          > = { 'reading': 0, 'to-read': 1, 'completed': 2 };
+          const statusA: 'reading' | 'to-read' | 'completed' =
+            a.readingStatus || 'to-read';
+          const statusB: 'reading' | 'to-read' | 'completed' =
+            b.readingStatus || 'to-read';
           return statusOrder[statusA] - statusOrder[statusB];
         case 'progress':
-          const progressA = readingProgress.find(p => p.mangaId === a.id);
-          const progressB = readingProgress.find(p => p.mangaId === b.id);
-          const lastReadA = progressA?.lastReadAt ? new Date(progressA.lastReadAt).getTime() : 0;
-          const lastReadB = progressB?.lastReadAt ? new Date(progressB.lastReadAt).getTime() : 0;
+          const progressA = readingProgress.find(
+            (p) => p.mangaId === a.id
+          );
+          const progressB = readingProgress.find(
+            (p) => p.mangaId === b.id
+          );
+          const lastReadA: number = progressA?.lastReadAt
+            ? new Date(progressA.lastReadAt).getTime()
+            : 0;
+          const lastReadB: number = progressB?.lastReadAt
+            ? new Date(progressB.lastReadAt).getTime()
+            : 0;
           return lastReadB - lastReadA;
         default:
           return 0;
       }
     });
 
-  const EmptyState = () => (
+  const EmptyState = (): JSX.Element => (
     <div className="flex flex-col items-center justify-center min-h-[60vh]">
       <div className="w-20 h-20 rounded-full bg-gray-800/50 flex items-center justify-center mb-6">
         <Heart className="w-10 h-10 text-gray-600" />
@@ -65,7 +79,7 @@ export default function FavoritesPage() {
     </div>
   );
 
-  const NoResults = () => (
+  const NoResults = (): JSX.Element => (
     <div className="text-center py-16">
       <p className="text-gray-400 text-lg">Aucun résultat pour &quot;{searchQuery}&quot;</p>
     </div>

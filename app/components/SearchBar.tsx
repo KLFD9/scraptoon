@@ -17,9 +17,9 @@ export default function SearchBar({
   searchHistory = [], 
   onClearHistory 
 }: SearchBarProps) {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showHistory, setShowHistory] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [showHistory, setShowHistory] = useState<boolean>(false);
+  const [isFocused, setIsFocused] = useState<boolean>(false);
   const searchBarRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
