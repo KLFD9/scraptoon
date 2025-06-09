@@ -1,7 +1,5 @@
-<<<<<<<< HEAD:app/hooks/useFavorites.ts
 import React, { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { Manga, FavoriteManga, ReadingStatus } from '../types/manga';
-import { logger } from '../utils/logger';
 
 const FAVORITES_KEY = 'mangaScraper_favorites';
 
@@ -21,32 +19,12 @@ interface FavoritesContextType {
 // Création du contexte
 const FavoritesContext = createContext<FavoritesContextType | undefined>(undefined);
 
-export function useFavorites() {
+function useFavoritesState(): FavoritesContextType {
   const [favorites, setFavorites] = useState<FavoriteManga[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
-========
-import React, { useState, createContext, useContext } from 'react';
-import type { Manga, FavoriteManga, ReadingStatus } from '../types/manga';
 
-const FAVORITES_KEY = 'mangaScraper_favorites';
-
-function loadFavorites(): FavoriteManga[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const saved = localStorage.getItem(FAVORITES_KEY);
-    return saved ? JSON.parse(saved) : [];
-  } catch {
-    return [];
-  }
-}
-
-function useFavoritesState() {
-  const [favorites, setFavorites] = useState<FavoriteManga[]>(loadFavorites);
->>>>>>>> 1b13e7afa7246fc922585c067ccd7b4d23f25b30:app/hooks/useFavorites.tsx
-
-  const persist = (items: FavoriteManga[]) => {
+  useEffect(() => {
     if (typeof window !== 'undefined') {
-<<<<<<<< HEAD:app/hooks/useFavorites.ts
       try {
         const saved = localStorage.getItem(FAVORITES_KEY);
         const parsedFavorites = saved ? JSON.parse(saved) : [];
@@ -71,35 +49,29 @@ function useFavoritesState() {
       }
     }
   }, [favorites, isLoaded]);
-========
-      localStorage.setItem(FAVORITES_KEY, JSON.stringify(items));
-    }
-  };
->>>>>>>> 1b13e7afa7246fc922585c067ccd7b4d23f25b30:app/hooks/useFavorites.tsx
 
   const addToFavorites = (manga: Manga) => {
     setFavorites(prev => {
       if (prev.some(fav => fav.id === manga.id)) return prev;
+      
       const newFavorite: FavoriteManga = {
         ...manga,
         addedAt: new Date().toISOString(),
         readingStatus: 'to-read',
         chapterCount: manga.chapterCount || { french: 0, total: 0 }
       };
-<<<<<<<< HEAD:app/hooks/useFavorites.ts
       
+      console.log('Adding manga to favorites:', { manga: newFavorite });
       return [...prev, newFavorite];
-========
-      const updated = [...prev, newFavorite];
-      persist(updated);
-      return updated;
->>>>>>>> 1b13e7afa7246fc922585c067ccd7b4d23f25b30:app/hooks/useFavorites.tsx
     });
   };
 
   const removeFromFavorites = (mangaId: string) => {
-<<<<<<<< HEAD:app/hooks/useFavorites.ts
-    setFavorites(prev => prev.filter(manga => manga.id !== mangaId));
+    setFavorites(prev => {
+      const filtered = prev.filter(manga => manga.id !== mangaId);
+      console.log('Removing manga from favorites:', { mangaId, count: filtered.length });
+      return filtered;
+    });
   };
 
   const updateFavorite = (mangaId: string, updates: Partial<FavoriteManga>) => {
@@ -110,23 +82,6 @@ function useFavoritesState() {
           : manga
       )
     );
-========
-    setFavorites(prev => {
-      const updated = prev.filter(manga => manga.id !== mangaId);
-      persist(updated);
-      return updated;
-    });
-  };
-
-  const updateFavorite = (mangaId: string, updates: Partial<FavoriteManga>) => {
-    setFavorites(prev => {
-      const updated = prev.map(manga =>
-        manga.id === mangaId ? { ...manga, ...updates } : manga
-      );
-      persist(updated);
-      return updated;
-    });
->>>>>>>> 1b13e7afa7246fc922585c067ccd7b4d23f25b30:app/hooks/useFavorites.tsx
   };
 
   const updateReadingStatus = (mangaId: string, status: ReadingStatus) => {
@@ -142,15 +97,10 @@ function useFavoritesState() {
 
   const isFavorite = (mangaId: string) => favorites.some(manga => manga.id === mangaId);
 
-<<<<<<<< HEAD:app/hooks/useFavorites.ts
   const getFavoritesByStatus = (status: ReadingStatus) => {
     return favorites.filter(manga => manga.readingStatus === status);
   };
-========
-  const getFavoritesByStatus = (status: ReadingStatus) =>
-    favorites.filter(manga => manga.readingStatus === status);
 
->>>>>>>> 1b13e7afa7246fc922585c067ccd7b4d23f25b30:app/hooks/useFavorites.tsx
   return {
     favorites,
     addToFavorites,
@@ -164,31 +114,17 @@ function useFavoritesState() {
   };
 }
 
-<<<<<<<< HEAD:app/hooks/useFavorites.ts
 // Provider pour le contexte
 export function FavoritesProvider({ children }: { children: ReactNode }) {
-  const favoritesState = useFavorites();
-  return React.createElement(FavoritesContext.Provider, { value: favoritesState }, children);
-========
-type FavoritesContextValue = ReturnType<typeof useFavoritesState>;
-
-const FavoritesContext = createContext<FavoritesContextValue | null>(null);
-
-export function FavoritesProvider({ children }: { children: React.ReactNode }) {
-  const value = useFavoritesState();
-  return <FavoritesContext.Provider value={value}>{children}</FavoritesContext.Provider>;
->>>>>>>> 1b13e7afa7246fc922585c067ccd7b4d23f25b30:app/hooks/useFavorites.tsx
+  const favoritesState = useFavoritesState();
+  return <FavoritesContext.Provider value={favoritesState}>{children}</FavoritesContext.Provider>;
 }
 
-// Hook pour consommer le contexte (optionnel, peut utiliser useFavorites directement)  
-export function useFavoritesContext(): FavoritesContextType {
+// Hook pour consommer le contexte
+export function useFavorites(): FavoritesContextType {
   const context = useContext(FavoritesContext);
   if (context === undefined) {
-    throw new Error('useFavoritesContext must be used within a FavoritesProvider');
+    throw new Error('useFavorites must be used within a FavoritesProvider');
   }
   return context;
-<<<<<<<< HEAD:app/hooks/useFavorites.ts
 }
-========
-}
->>>>>>>> 1b13e7afa7246fc922585c067ccd7b4d23f25b30:app/hooks/useFavorites.tsx
