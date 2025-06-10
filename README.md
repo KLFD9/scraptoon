@@ -163,6 +163,7 @@ node test-reading-logic.js
 multiple languages.
 `test-reading-logic.js` ensures the reading order is correct even when chapters
 are unsorted.
+To experiment with chapter navigation in the browser, run `public/test-language-navigation-browser.js` from the developer console on a chapter page.
 
 ## Contributing
 
