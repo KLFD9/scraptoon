@@ -7,6 +7,7 @@ import { BookOpen, Sparkles, Target } from 'lucide-react';
 import { useFavorites } from '../hooks/useFavorites';
 import { useRecommendations } from '../hooks/useRecommendations';
 import { Manga } from '../types/manga';
+import { logger } from '../utils/logger';
 
 interface ModernRecommendationsSectionProps {
   onSearch: (query: string) => void;
@@ -20,13 +21,15 @@ export default function ModernRecommendationsSection({ onSearch }: ModernRecomme
   const { favorites } = useFavorites();
   const [mounted, setMounted] = useState(false);
 
-  // Debug console logs
+  // Debug logs
   useEffect(() => {
-    console.log('🎯 ModernRecommendationsSection mounted');
-    console.log('📚 Recommendations:', recommendations);
-    console.log('⏳ Loading:', loading);
-    console.log('❌ Error:', error);
-    console.log('💖 Favorites count:', favorites.length);
+    logger.log('info', 'ModernRecommendationsSection mounted');
+    logger.log('info', 'recommendations state updated', {
+      count: recommendations.length,
+      loading,
+      error
+    });
+    logger.log('info', 'favorites count', { count: favorites.length });
     setMounted(true);
   }, [recommendations, loading, error, favorites.length]);
 
@@ -35,7 +38,7 @@ export default function ModernRecommendationsSection({ onSearch }: ModernRecomme
     const handleKeydown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.shiftKey && e.key === 'R') {
         e.preventDefault();
-        console.log('🔄 Rechargement forcé des recommandations...');
+        logger.log('info', 'forcing recommendations reload');
         refetch();
       }
     };
@@ -45,15 +48,17 @@ export default function ModernRecommendationsSection({ onSearch }: ModernRecomme
   }, [refetch]);
 
   if (!mounted) {
-    console.log('⏸️ Component not mounted yet');
+    logger.log('info', 'component not mounted yet');
     return null;
   }
   
-  console.log('🎨 Rendering recommendations section, items:', recommendations.length);
+  logger.log('info', 'rendering recommendations section', {
+    items: recommendations.length
+  });
   
   // Show a loading state rather than nothing
   if (loading) {
-    console.log('⏳ Affichage du state de chargement...');
+    logger.log('info', 'displaying loading state');
     return (
       <section className="mt-8 mb-6">
         <div className="flex items-center justify-between mb-4">
@@ -85,7 +90,7 @@ export default function ModernRecommendationsSection({ onSearch }: ModernRecomme
 
   // If there's an error, show it and allow retry
   if (error) {
-    console.log('❌ Affichage de l\'erreur:', error);
+    logger.log('error', 'displaying error', { error });
     return (
       <section className="mt-8 mb-6">
         <div className="flex items-center justify-between mb-4">
@@ -118,7 +123,7 @@ export default function ModernRecommendationsSection({ onSearch }: ModernRecomme
 
   // If there are actually no recommendations after loading, show a message
   if (!recommendations.length) {
-    console.log('📭 Aucune recommandation trouvée');
+    logger.log('info', 'no recommendations found');
     return (
       <section className="mt-8 mb-6">
         <div className="flex items-center justify-between mb-4">
@@ -149,7 +154,9 @@ export default function ModernRecommendationsSection({ onSearch }: ModernRecomme
     );
   }
 
-  console.log('✅ Affichage des recommandations:', recommendations.map(r => r.title));
+  logger.log('info', 'displaying recommendations', {
+    titles: recommendations.map(r => r.title)
+  });
 
   return (
     <section className="mt-8 mb-6">

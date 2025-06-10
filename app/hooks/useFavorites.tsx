@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, createContext, useContext, ReactNode, use } from 'react';
 import { Manga, FavoriteManga, ReadingStatus } from '../types/manga';
+import { logger } from '../utils/logger';
 
 const FAVORITES_KEY = 'mangaScraper_favorites';
 
@@ -30,10 +31,14 @@ function useFavoritesState(): FavoritesContextType {
       try {
         const saved = localStorage.getItem(FAVORITES_KEY);
         const parsedFavorites = saved ? JSON.parse(saved) : [];
-        console.log('Loading favorites from localStorage:', { saved, count: parsedFavorites.length });
+        logger.log('info', 'favorites loaded from localStorage', {
+          count: parsedFavorites.length
+        });
         setFavorites(parsedFavorites);
       } catch (error) {
-        console.error('Failed to load favorites from localStorage:', error);
+        logger.log('error', 'failed to load favorites from localStorage', {
+          error: String(error)
+        });
         setFavorites([]);
       } finally {
         setIsLoaded(true);
@@ -44,10 +49,14 @@ function useFavoritesState(): FavoritesContextType {
   useEffect(() => {
     if (typeof window !== 'undefined' && isLoaded) {
       try {
-        console.log('Saving favorites to localStorage:', { count: favorites.length });
+        logger.log('info', 'favorites saved to localStorage', {
+          count: favorites.length
+        });
         localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
       } catch (error) {
-        console.error('Failed to save favorites to localStorage:', error);
+        logger.log('error', 'failed to save favorites to localStorage', {
+          error: String(error)
+        });
       }
     }
   }, [favorites, isLoaded]);
@@ -63,7 +72,9 @@ function useFavoritesState(): FavoritesContextType {
         chapterCount: manga.chapterCount || { french: 0, total: 0 }
       };
       
-      console.log('Adding manga to favorites:', { manga: newFavorite });
+      logger.log('info', 'manga added to favorites', {
+        mangaId: newFavorite.id
+      });
       return [...prev, newFavorite];
     });
   };
@@ -71,7 +82,10 @@ function useFavoritesState(): FavoritesContextType {
   const removeFromFavorites = (mangaId: string) => {
     setFavorites(prev => {
       const filtered = prev.filter(manga => manga.id !== mangaId);
-      console.log('Removing manga from favorites:', { mangaId, count: filtered.length });
+      logger.log('info', 'manga removed from favorites', {
+        mangaId,
+        remaining: filtered.length
+      });
       return filtered;
     });
   };

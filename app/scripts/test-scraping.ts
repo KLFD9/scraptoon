@@ -2,7 +2,7 @@ import { batchDiagnose, generateOptimalSelectors, type DiagnosticResult } from '
 import { logger } from '../utils/logger';
 
 async function testScrapingConfigs() {
-  console.log('🔍 Diagnostic des configurations de scraping...\n');
+  logger.log('info', 'starting scraping diagnostics');
 
   const testCases = [
     {
@@ -26,25 +26,29 @@ async function testScrapingConfigs() {
     const results = await batchDiagnose(testCases);
 
     for (const result of results) {
-      console.log(`\n📊 === ${result.name} ===`);
-      console.log(`🌐 URL: ${result.url}`);
-      console.log(`✅ Succès: ${result.success ? 'OUI' : 'NON'}`);
-      console.log(`📄 Titre: ${result.pageInfo.title}`);
-      console.log(`🖼️  Images totales trouvées: ${result.pageInfo.totalImages}`);
-      console.log(`⏳ Lazy loading: ${result.pageInfo.hasLazyLoading ? 'OUI' : 'NON'}`);
+      logger.log('info', `diagnostic result ${result.name}`, {
+        url: result.url,
+        success: result.success,
+        title: result.pageInfo.title,
+        totalImages: result.pageInfo.totalImages,
+        lazy: result.pageInfo.hasLazyLoading
+      });
 
       if (result.errors.length > 0) {
-        console.log(`❌ Erreurs: ${result.errors.join(', ')}`);
+        logger.log('warning', 'diagnostic errors', {
+          errors: result.errors,
+          url: result.url
+        });
       }
 
       // Conteneurs fonctionnels
       const workingContainers = result.elements.containers.filter(c => c.found > 0);
       if (workingContainers.length > 0) {
-        console.log('\n📦 Conteneurs fonctionnels:');
+        logger.log('info', 'working containers');
         workingContainers.forEach(c => {
-          console.log(`  - ${c.selector}: ${c.found} éléments`);
+          logger.log('info', 'container details', { selector: c.selector, found: c.found });
           if (c.html) {
-            console.log(`    HTML: ${c.html.substring(0, 100)}...`);
+            logger.log('info', 'container html sample', { html: c.html.substring(0, 100) });
           }
         });
       }
@@ -52,25 +56,24 @@ async function testScrapingConfigs() {
       // Images fonctionnelles
       const workingImages = result.elements.images.filter(i => i.found > 0);
       if (workingImages.length > 0) {
-        console.log('\n🖼️ Sélecteurs d\'images fonctionnels:');
+        logger.log('info', 'working image selectors');
         workingImages.forEach(i => {
-          console.log(`  - ${i.selector}: ${i.found} images`);
+          logger.log('info', 'image selector details', { selector: i.selector, found: i.found });
           if (i.sources && i.sources.length > 0) {
-            console.log(`    Sources: ${i.sources.slice(0, 3).join(', ')}...`);
+            logger.log('info', 'image sources sample', { sources: i.sources.slice(0, 3) });
           }
         });
       }
 
       // Génération des sélecteurs optimaux
       const optimal = await generateOptimalSelectors(result);
-      console.log('\n💡 Recommandations:');
-      console.log(optimal.recommendation);
+      logger.log('info', 'recommendations', { text: optimal.recommendation });
 
-      console.log('\n' + '='.repeat(80));
+      logger.log('info', 'end of result');
     }
 
     // Génération d'une nouvelle configuration basée sur les résultats
-    console.log('\n🔧 Configuration mise à jour recommandée:');
+    logger.log('info', 'updated configuration recommended');
     generateUpdatedConfig(results);
 
   } catch (error) {
@@ -84,11 +87,11 @@ function generateUpdatedConfig(results: DiagnosticTestResult[]) {
   const successfulResults = results.filter(r => r.success);
   
   if (successfulResults.length === 0) {
-    console.log('❌ Aucune configuration fonctionnelle trouvée');
+    logger.log('warning', 'no functional configuration found');
     return;
   }
 
-  console.log('\nConst SCRAPING_CONFIGS_UPDATED = {');
+  logger.log('info', 'SCRAPING_CONFIGS_UPDATED start');
   
   for (const result of successfulResults) {
     const workingContainers = result.elements.containers
@@ -102,17 +105,17 @@ function generateUpdatedConfig(results: DiagnosticTestResult[]) {
       .slice(0, 5);
 
     if (workingContainers.length > 0 && workingImages.length > 0) {
-      console.log(`  // ${result.name}`);
-      console.log(`  '${result.name.toLowerCase().replace(/\s+/g, '-')}': {`);
-      console.log(`    container: '${workingContainers.join(', ')}',`);
-      console.log(`    images: [${workingImages.map(s => `'${s}'`).join(', ')}],`);
-      console.log(`    lazyLoad: ${result.pageInfo.hasLazyLoading},`);
-      console.log(`    // Trouvé ${result.pageInfo.totalImages} images`);
-      console.log(`  },`);
+      logger.log('info', 'scraping config snippet', {
+        name: result.name,
+        container: workingContainers.join(', '),
+        images: workingImages,
+        lazyLoad: result.pageInfo.hasLazyLoading,
+        totalImages: result.pageInfo.totalImages
+      });
     }
   }
   
-  console.log('};');
+  logger.log('info', 'SCRAPING_CONFIGS_UPDATED end');
 }
 
 // Execution si lancé directement

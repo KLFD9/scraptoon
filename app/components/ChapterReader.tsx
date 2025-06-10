@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import Image from 'next/image'
 import { ChevronUp } from 'lucide-react'
 import ImageErrorFeedback from './ImageErrorFeedback'
+import { logger } from '../utils/logger'
 
 interface ChapterReaderProps {
   pages: string[]
@@ -107,7 +108,7 @@ const ChapterReader: React.FC<ChapterReaderProps> = ({ pages, chapter, mangaTitl
 
   const handleReportImage = (pageIndex: number) => {
     // Optionnel : envoyer le rapport à un service de feedback
-    console.log(`Image signalée pour la page ${pageIndex + 1}`)
+    logger.log('info', 'image reported', { index: pageIndex + 1 })
   }
 
   // Initial preload

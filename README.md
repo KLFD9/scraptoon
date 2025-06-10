@@ -48,6 +48,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Asynchronous API routes with proper parameter handling.
 - Timestamped error logs for easier debugging.
 - Consistent `logger.log('error')` calls replace `console.error` for structured logging.
+- `console.log` and `console.warn` are replaced with `logger.log` for unified structured logs.
 - Unified API response with `pageCount` and `pages` array.
 - Stronger type safety with explicit interfaces replacing `any`.
 - Extended MangaDex type definitions for `lastChapter` and `contentRating`.
