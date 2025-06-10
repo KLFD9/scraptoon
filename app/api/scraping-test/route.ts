@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       ]
     };
 
-    console.log(`🔍 Test de diagnostic pour: ${url}`);
+    logger.log('info', 'diagnostic test for URL', { url });
     const result = await diagnoseScrapingSelectors(url, defaultSelectors);
 
     // Simplifier le résultat pour l'API

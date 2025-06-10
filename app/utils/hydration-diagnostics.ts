@@ -3,6 +3,8 @@
  * Utilisé pour identifier et déboguer les différences entre serveur et client
  */
 
+import { logger } from './logger';
+
 export const hydrationDiagnostics = {
   /**
    * Log les différences d'attributs HTML qui peuvent causer des problèmes d'hydratation
@@ -13,11 +15,11 @@ export const hydrationDiagnostics = {
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (mutation.type === 'attributes') {
-          console.warn('Hydration: Attribut modifié après hydratation:', {
-            element: mutation.target,
-            attribute: mutation.attributeName,
-            oldValue: mutation.oldValue,
-            newValue: (mutation.target as Element).getAttribute(mutation.attributeName || '')
+          logger.log('warning', 'hydration attribute changed', {
+            element: mutation.target as Element,
+            attribute: mutation.attributeName ?? undefined,
+            oldValue: mutation.oldValue ?? undefined,
+            newValue: (mutation.target as Element).getAttribute(mutation.attributeName || '') ?? undefined
           });
         }
       });
@@ -51,7 +53,9 @@ export const hydrationDiagnostics = {
     );
 
     if (foundAttributes.length > 0) {
-      console.warn('Hydration: Extensions détectées:', foundAttributes);
+      logger.log('warning', 'browser extensions detected', {
+        extensions: foundAttributes
+      });
     }
 
     return foundAttributes;
@@ -67,7 +71,9 @@ export const hydrationDiagnostics = {
     const timeElements = document.querySelectorAll('[data-time], [data-timestamp]');
     
     if (timeElements.length > 0) {
-      console.warn('Hydration: Éléments temporels détectés:', timeElements);
+      logger.log('warning', 'time-based elements detected', {
+        elements: Array.from(timeElements).map(el => el.outerHTML?.slice(0, 50))
+      });
     }
   }
 };

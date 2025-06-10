@@ -19,7 +19,7 @@ export async function getRedisClient(): Promise<RedisClientType> {
     });
     
     client.on('connect', () => {
-      console.log('Redis connected successfully');
+      logger.log('info', 'redis connected successfully');
     });
     
     await client.connect();
@@ -32,7 +32,7 @@ export async function testRedisConnection(): Promise<boolean> {
   try {
     const redis = await getRedisClient();
     await redis.ping();
-    console.log('Redis connection test: SUCCESS');
+    logger.log('info', 'redis connection test success');
     return true;
   } catch (error) {
     logger.log('error', 'Redis connection test failed', { error: String(error) });
