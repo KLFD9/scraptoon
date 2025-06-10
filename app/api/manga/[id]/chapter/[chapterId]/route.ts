@@ -588,7 +588,14 @@ async function handleGet(
     };
 
     // Mettre en cache pour 1 heure
-    cache.set(cacheKey, result);
+    try {
+      await cache.set(cacheKey, result);
+    } catch (error) {
+      logger.log('error', 'chapter cache set error', {
+        error: String(error),
+        cacheKey,
+      });
+    }
 
     console.log(`✅ Scraping terminé: ${images.length} images trouvées`);
     return NextResponse.json(result);
