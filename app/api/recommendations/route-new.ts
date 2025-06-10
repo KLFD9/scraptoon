@@ -23,54 +23,28 @@ async function generateRecommendations(
   favorites: FavoriteMeta[],
   limit: number
 ): Promise<Manga[]> {
-  // Log détaillé des paramètres d'entrée
-  logger.log('info', '🔍 Génération recommandations - Paramètres', {
-    historyCount: history.length,
-    favoritesCount: favorites.length,
-    limit,
-    favoritesDetails: favorites.map(f => ({ id: f.id, author: f.author, type: f.type }))
-  });
-
   const cacheKey = `recommendations_${history.sort().join('_')}_${favorites
     .map((f) => f.id)
     .sort()
     .join('_')}_${limit}`;
-  
-  logger.log('info', '🔑 Clé de cache générée', {
-    cacheKey
-  });
-    
   const cached = await cache.get(cacheKey);
   if (cached) {
-    logger.log('info', '💾 Recommandations chargées depuis le cache', {
-      count: cached.length,
-      titles: cached.map(c => c.title)
-    });
+    logger.log('info', 'Recommandations chargées depuis le cache');
     return cached;
   }
 
   let recommendations: Manga[] = [];
   const excludeIds = [...history, ...favorites.map(f => f.id)];
   
-  logger.log('info', '🚫 IDs à exclure', {
-    excludeIds,
-    historyCount: history.length,
-    favoritesCount: favorites.length
-  });
-  
   // Si l'utilisateur a des favoris, générer des recommandations personnalisées
   if (favorites.length > 0) {
-    logger.log('info', '🎯 Génération de recommandations personnalisées', {
+    logger.log('info', 'Génération de recommandations personnalisées', {
       favoritesCount: favorites.length
     });
 
     const favoriteAuthors = new Set(
       favorites.map((f) => f.author).filter((a): a is string => Boolean(a))
     );
-    
-    logger.log('info', '👨‍🎨 Auteurs favoris extraits', {
-      authors: Array.from(favoriteAuthors)
-    });
 
     // 1. Recommandations par auteur (même auteur que les favoris)
     const authorRecommendations: Manga[] = [];

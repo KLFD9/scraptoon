@@ -48,14 +48,20 @@ export interface LogData {
   original?: string;
   totalPages?: number;
   count?: number;
-  variant?: string;
-  sourceResults?: Array<{
-    source: string;
-    titleId: string;
-    url: string;
-  }>;
+  favoritesCount?: number;
+  candidatesCount?: number;
+  needed?: number;
+  author?: string;
+  reason?: string;
+  candidate?: string;
+  favorite?: string;
+  commonWords?: string[];  total?: number;
+  sourceResults?: any;
   resultsCount?: number;
-  total?: number;
+  historyCount?: number;
+  excludeIds?: string[];
+  authors?: string[];
+  favoritesDetails?: any[];
   isValidPage?: boolean;
   pageStatus?: {
     hasValidContent: boolean;
@@ -96,4 +102,4 @@ export const logger = {
         console.log(JSON.stringify(logEntry, null, 2));
     }
   }
-}; 
+};
