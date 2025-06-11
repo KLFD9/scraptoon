@@ -1,4 +1,4 @@
-import { Source, ChaptersResult } from '@/app/types/source';
+import { Source, ChaptersResult, SourceSearchResultItem } from '@/app/types/source'; // Added SourceSearchResultItem
 import { logger } from '@/app/utils/logger';
 import { retry } from '@/app/utils/retry';
 
@@ -6,26 +6,56 @@ import { retry } from '@/app/utils/retry';
 export const komgaSource: Source = {
   name: 'komga',
   baseUrl: process.env.KOMGA_URL || '',
-  search: async (title: string) => {
+  search: async (title: string): Promise<SourceSearchResultItem[]> => { // Updated return type
     try {
       if (!process.env.KOMGA_URL) {
-        return { titleId: null, url: null };
+        logger.log('warning', 'Komga search skipped: KOMGA_URL not configured'); // Changed 'warn' to 'warning'
+        return [];
       }
-      const searchUrl = `${process.env.KOMGA_URL.replace(/\/$/, '')}/api/v1/series?search=${encodeURIComponent(title)}`;
-      const res = await retry(() => fetch(searchUrl), 3, 1000);
-      if (!res.ok) return { titleId: null, url: null };
+      const komgaApiUrl = process.env.KOMGA_URL.replace(/\/$/, '');
+      // Komga API returns a list of series. We should fetch a reasonable number.
+      // The search in multiSource.ts already limits Komga to 50.
+      // Here, we adapt to return all items found by this specific source search.
+      const searchUrl = `${komgaApiUrl}/api/v1/series?search=${encodeURIComponent(title)}&size=50`; // Fetch up to 50 like in multiSource
+      
+      const komgaUser = process.env.KOMGA_USERNAME;
+      const komgaPassword = process.env.KOMGA_PASSWORD;
+      const headers: HeadersInit = {};
+      if (komgaUser && komgaPassword) {
+        headers['Authorization'] = 'Basic ' + Buffer.from(komgaUser + ":" + komgaPassword).toString('base64');
+      }
+
+      const res = await retry(() => fetch(searchUrl, { headers }), 3, 1000);
+      if (!res.ok) {
+        logger.log('error', 'Komga API search request failed', { status: res.status, query: title, response: await res.text() });
+        return [];
+      }
       const data = await res.json();
-      const first = (data.content || [])[0];
-      if (!first) return { titleId: null, url: null };
-      return {
-        titleId: first.id,
-        url: `${process.env.KOMGA_URL.replace(/\/$/, '')}/series/${first.id}`
-      };
+      
+      if (!data.content || !Array.isArray(data.content) || data.content.length === 0) {
+        logger.log('info', 'Komga search: No content found or empty array.', { query: title });
+        return [];
+      }
+
+      const results: SourceSearchResultItem[] = data.content.map((series: any) => ({
+        id: series.id,
+        title: series.metadata?.title || series.name || 'Untitled',
+        url: `${komgaApiUrl}/series/${series.id}`,
+        // Komga series search doesn't directly provide a cover URL in the list.
+        // The cover is typically fetched separately or constructed, e.g., /api/v1/series/{id}/thumbnail
+        // For simplicity in search, we can construct it or leave it undefined if not readily available.
+        cover: `${komgaApiUrl}/api/v1/series/${series.id}/thumbnail`,
+        sourceName: 'Komga',
+      }));
+      
+      logger.log('info', `Komga search successful. Found ${results.length} items.`, { query: title, count: results.length });
+      return results;
     } catch (error) {
       logger.log('error', 'Erreur lors de la recherche sur Komga', {
-        error: error instanceof Error ? error.message : 'Erreur inconnue'
+        error: error instanceof Error ? error.message : 'Erreur inconnue',
+        query: title,
       });
-      return { titleId: null, url: null };
+      return [];
     }
   },
   getChapters: async (titleId: string, url: string): Promise<ChaptersResult> => {

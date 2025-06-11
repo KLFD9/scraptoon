@@ -38,62 +38,85 @@ async function handlePost(request: Request) {
     if (!rateLimiter.canMakeRequest(ip)) {
       return Response.json({
         success: false,
-        error: 'Trop de requ\u00eates, veuillez patienter.'
+        error: 'Trop de requêtes, veuillez patienter.'
       }, { status: 429 });
     }
 
-    const { searchQuery } = await request.json();
+    const { searchQuery, refreshCache } = await request.json(); // Added refreshCache
     
     if (!searchQuery) {
       throw new Error('Requête de recherche invalide');
     }
 
-    const sanitizedQuery = searchQuery.replace(/[^a-zA-Z0-9\s'-]/g, '').trim();
+    const sanitizedQuery = searchQuery.replace(/[^a-zA-Z0-9\\s'-]/g, '').trim();
 
     if (!sanitizedQuery) {
       throw new Error('Requête de recherche invalide');
     }
 
-    // Vérification du cache
     const cacheKey = sanitizedQuery.toLowerCase();
-    const cachedData = await cache.get(cacheKey);
-    if (cachedData) {
-      logger.log('info', 'Résultats retournés depuis le cache', {
-        query: sanitizedQuery,
-        resultsCount: cachedData.length
-      });
-      return Response.json({
-        success: true,
-        results: cachedData,
-        metadata: {
-          totalResults: cachedData.length,
-          source: 'mangadex',
-          cached: true
-        }
-      });
-    }    logger.log('debug', 'Début de la recherche', {
+
+    if (refreshCache === true) {
+      await cache.delete(cacheKey);
+      logger.log('info', `[API Route] Cache for key '${cacheKey}' deleted due to refreshCache=true`, { query: sanitizedQuery, cacheKey });
+    }
+
+    if (refreshCache !== true) {
+      const cachedData = await cache.get(cacheKey);
+      if (cachedData) {
+        logger.log('info', '[API Route] Results returned from cache', {
+          query: sanitizedQuery,
+          resultsCount: cachedData.length,
+          cacheKey
+        });
+        return Response.json({
+          success: true,
+          results: cachedData,
+          metadata: {
+            totalResults: cachedData.length,
+            source: 'cache', // Corrected source to 'cache'
+            cached: true
+          }
+        });
+      }
+      logger.log('info', `[API Route] Cache miss for key '${cacheKey}'`, { query: sanitizedQuery, cacheKey });
+    }
+    
+    logger.log('debug', `[API Route] Fetching fresh search results (cache miss or refresh requested). Refresh status: ${refreshCache === true}`, {
       query: sanitizedQuery,
       timestamp: new Date().toISOString()
     });
 
-    const aggregated = await searchMultiSource(sanitizedQuery);
+    const searchStartTime = Date.now();
+    logger.log('info', `[API Route] Before calling searchMultiSource for query: "${sanitizedQuery}"`, { query: sanitizedQuery, refreshCache }); // Log the refreshCache value being passed
+    const aggregated = await searchMultiSource(sanitizedQuery, refreshCache); // Pass refreshCache here
+    const searchExecutionTime = Date.now() - searchStartTime;
+    logger.log('info', `[API Route] After calling searchMultiSource. Received ${aggregated.length} results for query: "${sanitizedQuery}" in ${searchExecutionTime}ms`, { query: sanitizedQuery, resultsCount: aggregated.length, executionTime: searchExecutionTime });
+
     if (aggregated.length > 0) {
       await cache.set(cacheKey, aggregated);
-      logger.log('info', 'Multi-source results (MangaDex, Kitsu, Komga, Toomics)', { 
+      logger.log('info', '[API Route] Multi-source results fetched, cached, and returned', { 
         query: sanitizedQuery, 
-        resultsCount: aggregated.length 
+        resultsCount: aggregated.length,
+        cacheKey,
+        executionTime: searchExecutionTime
       });
       return Response.json({
         success: true,
         results: aggregated,
         metadata: {
           totalResults: aggregated.length,
-          source: 'multi',
+          source: 'multi-source', // Changed to 'multi-source'
           cached: false,
+          executionTimeMs: searchExecutionTime
         },
       });
     }
 
+    // Fallback to MangaDex if multi-source returns nothing - This section might be hit if all sources fail or return empty
+    logger.log('warning', `[API Route] Multi-source search returned 0 results for "${sanitizedQuery}". Falling back to MangaDex.`, { query: sanitizedQuery, executionTime: searchExecutionTime });
+    
+    const mangaDexFallbackStartTime = Date.now();
     // Construction des paramètres de recherche
     const params = new URLSearchParams();
     
@@ -166,91 +189,50 @@ async function handlePost(request: Request) {
       data.data.map(async (manga: MangaDexManga) => {
         try {
           // Récupération de la couverture
-          const cover = manga.relationships?.find((rel: MangaDexRelationship) => rel.type === 'cover_art');
+          const coverRel = manga.relationships?.find((rel: MangaDexRelationship) => rel.type === 'cover_art');
           const author = manga.relationships?.find((rel: MangaDexRelationship) => rel.type === 'author');
           const artist = manga.relationships?.find((rel: MangaDexRelationship) => rel.type === 'artist');
         
-        // Récupération du nombre total de chapitres depuis les attributs du manga
-        const totalChapters = manga.attributes?.lastChapter 
-          ? parseInt(manga.attributes.lastChapter)
-          : 0;
+          const coverUrl = coverRel?.attributes?.fileName
+            ? `https://uploads.mangadex.org/covers/${manga.id}/${coverRel.attributes.fileName}`
+            : '';
 
-        // Récupération des chapitres traduits
-        const chaptersResponse = await retry(
-          () =>
-            fetchHttps(
-              `https://api.mangadex.org/manga/${manga.id}/feed?limit=0&translatedLanguage[]=fr&includes[]=scanlation_group&order[chapter]=desc`
-            ),
-          RETRY_ATTEMPTS,
-          RETRY_DELAY,
-        );
-        const chaptersData: MangaDexChaptersResponse = await chaptersResponse.json();
-        
-        // Calcul des chapitres traduits en français
-        const frenchChapters = new Set(
-          chaptersData.data
-            ?.filter(
-              (chapter: MangaDexChapter) =>
-                chapter.attributes.translatedLanguage === 'fr'
-            )
-            ?.map((chapter: MangaDexChapter) => chapter.attributes.chapter)
-        ).size;
+          // Récupération du nombre total de chapitres depuis les attributs du manga
+          const totalChapters = manga.attributes?.lastChapter 
+            ? parseInt(manga.attributes.lastChapter)
+            : 0;
 
-        const chapterInfo = {
-          french: frenchChapters,
-          total: totalChapters,
-          formattedText: totalChapters > 0
-            ? frenchChapters > 0
-              ? `${frenchChapters}/${totalChapters}`
-              : `${totalChapters}`
-            : '?'
-        };
+          let title = 'Untitled';
+          if (manga.attributes?.title) {
+            title = manga.attributes.title.en || Object.values(manga.attributes.title)[0] || 'Untitled';
+          }
 
-        const coverFileName = cover?.attributes?.fileName;
-        const coverUrl = coverFileName 
-          ? `https://uploads.mangadex.org/covers/${manga.id}/${coverFileName}`
-          : '';
+          let description = '';
+          if (manga.attributes?.description) {
+            description = manga.attributes.description.en || Object.values(manga.attributes.description)[0] || '';
+          }
 
-        // Extraction du titre avec fallback
-        const title = 
-          manga.attributes?.title?.fr || 
-          manga.attributes?.title?.en || 
-          Object.values(manga.attributes?.title || {})[0] || 
-          'Sans titre';
-
-        // Extraction des informations de langue
-        const availableLanguages = manga.attributes?.availableTranslatedLanguages || [];
-        const isAvailableInFrench = availableLanguages.includes('fr');
-        const originalLanguage = manga.attributes?.originalLanguage;
-
-        return {
-          id: manga.id,
-          title,
-          description: manga.attributes?.description?.fr || 
-                      manga.attributes?.description?.en || 
-                      '',
-          cover: coverUrl,
-          url: `https://mangadex.org/title/${manga.id}`,
-          type: originalLanguage === 'ko' ? 'manhwa' : 
-                originalLanguage === 'zh' ? 'manhua' : 'manga',
-          status: manga.attributes?.status === 'ongoing' ? 'ongoing' : 'completed',
-          lastChapter: chapterInfo.formattedText,
-          chapterCount: {
-            french: chapterInfo.french,
-            total: chapterInfo.total
-          },
-          author: author?.attributes?.name || '',
-          artist: artist?.attributes?.name || '',
-          year: manga.attributes?.year || '',
-          rating: manga.attributes?.contentRating || 'safe',
-          availableLanguages,
-          isAvailableInFrench,
-          originalLanguage
-        };
-        } catch (error) {
+          return {
+            id: manga.id,
+            title: title,
+            description: description,
+            cover: coverUrl,
+            url: `/manga/${manga.id}`, // Assurez-vous que l'URL est correcte
+            source: 'MangaDex', // Ajout de la propriété source
+            type: (manga.attributes?.originalLanguage === 'ja' ? 'manga' : 'manhwa') as 'manga' | 'manhwa' | 'manhua',
+            status: (manga.attributes?.status || 'unknown') as 'ongoing' | 'completed',
+            lastChapter: manga.attributes?.lastChapter || '?',
+            chapterCount: { french: 0, total: totalChapters }, // Mettez à jour si vous avez le nombre de chapitres en français
+            author: author?.attributes?.name || 'N/A',
+            artist: artist?.attributes?.name || 'N/A',
+            year: manga.attributes?.year ? String(manga.attributes.year) : undefined,
+            originalLanguage: manga.attributes?.originalLanguage || undefined,
+            // Assurez-vous que toutes les propriétés requises par Manga sont ici
+          } as Manga;
+        } catch (mapError) {
           logger.log('error', 'Erreur lors de la transformation du manga', {
             mangaId: manga.id,
-            error: error instanceof Error ? error.message : 'Erreur inconnue',
+            error: mapError instanceof Error ? mapError.message : 'Erreur inconnue',
           });
           return null;
         }
@@ -268,13 +250,21 @@ async function handlePost(request: Request) {
       titles: results.map(r => r.title)
     });
 
+    const mangaDexFallbackExecutionTime = Date.now() - mangaDexFallbackStartTime;
+    logger.log('info', '[API Route] MangaDex fallback search successful', {
+      query: sanitizedQuery,
+      resultsCount: results.length, // Assuming 'results' is the variable holding MangaDex results
+      executionTime: mangaDexFallbackExecutionTime
+    });
+
     return Response.json({
       success: true,
-      results,
+      results, // Assuming 'results' is the variable holding MangaDex results
       metadata: {
         totalResults: results.length,
-        source: 'mangadex',
-        cached: false
+        source: 'mangadex-fallback', // Clearly indicate fallback
+        cached: false, // Fallback results are fresh, then cached
+        executionTimeMs: mangaDexFallbackExecutionTime
       }
     });
 

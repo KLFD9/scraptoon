@@ -1,11 +1,11 @@
 'use client';
 
-import { Search, Clock } from 'lucide-react';
+import { Search, Clock, X as XIcon } from 'lucide-react'; // Added XIcon
 import { useState, useRef, useEffect } from 'react';
 import LoadingSpinner from './LoadingSpinner';
 
 interface SearchBarProps {
-  onSearch: (query: string) => void;
+  onSearch: (query: string, forceRefresh?: boolean) => void; // Updated to accept optional forceRefresh
   loading?: boolean;
   searchHistory?: string[];
   onClearHistory?: () => void;
@@ -21,7 +21,17 @@ export default function SearchBar({
   const [showHistory, setShowHistory] = useState<boolean>(false);
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const searchBarRef = useRef<HTMLDivElement>(null);
-  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Ref to store debounce timeout
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Refs to store the latest versions of onSearch and loading, to avoid them as direct dependencies in debounce useEffect
+  const onSearchRef = useRef(onSearch);
+  const loadingRef = useRef(loading);
+
+  useEffect(() => {
+    // Keep refs updated with the latest prop values
+    onSearchRef.current = onSearch;
+    loadingRef.current = loading;
+  }, [onSearch, loading]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -41,28 +51,28 @@ export default function SearchBar({
       clearTimeout(debounceTimeoutRef.current);
     }
 
-    // Only set timeout if query is not empty and component is focused or query has meaningful length
-    // This prevents searching an empty string if user clears input, 
-    // and avoids initial search on mount if searchQuery is initially empty.
-    if (searchQuery.trim() && isFocused) { 
+    const currentQuery = searchQuery.trim();
+
+    if (currentQuery && isFocused) {
       debounceTimeoutRef.current = setTimeout(() => {
-        // Check loading state again inside timeout, as it might have changed
-        if (!loading) { 
-          onSearch(searchQuery.trim());
+        if (!loadingRef.current) { 
+          // Call onSearch with forceRefresh: true when search is triggered by debounce
+          onSearchRef.current(currentQuery, true); 
         }
-      }, 300); // 300ms debounce delay
-    } else if (!searchQuery.trim() && debounceTimeoutRef.current) {
-        // If query becomes empty, clear timeout
-        clearTimeout(debounceTimeoutRef.current);
+      }, 1000); // Increased debounce delay to 1000ms
+    } else if (!currentQuery && debounceTimeoutRef.current) {
+      // If query becomes empty, clear any existing timeout immediately
+      clearTimeout(debounceTimeoutRef.current);
     }
     
-    // Cleanup timeout on component unmount
     return () => {
       if (debounceTimeoutRef.current) {
         clearTimeout(debounceTimeoutRef.current);
       }
     };
-  }, [searchQuery, onSearch, loading, isFocused]); // Add loading and isFocused to dependencies
+  // Only re-run this effect if searchQuery or isFocused changes.
+  // onSearch and loading changes are handled by refs.
+  }, [searchQuery, isFocused]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchQuery(e.target.value);
@@ -71,22 +81,34 @@ export default function SearchBar({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (debounceTimeoutRef.current) { // Clear any pending debounce
+    if (debounceTimeoutRef.current) { 
       clearTimeout(debounceTimeoutRef.current);
     }
     if (searchQuery.trim() && !loading) {
-      onSearch(searchQuery.trim());
+      // Call onSearch with forceRefresh: true on form submit
+      onSearch(searchQuery.trim(), true); 
       setShowHistory(false);
     }
   };
 
   const handleHistoryItemClick = (query: string) => {
-    if (debounceTimeoutRef.current) { // Clear any pending debounce
+    if (debounceTimeoutRef.current) { 
       clearTimeout(debounceTimeoutRef.current);
     }
     setSearchQuery(query);
-    onSearch(query); // Search immediately on history click
+    // Call onSearch with forceRefresh: true on history item click
+    onSearch(query, true); 
     setShowHistory(false);
+  };
+
+  const handleClearSearch = () => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+    setSearchQuery('');
+    // Optionally, call onSearch with an empty string if you want to clear results or reset to a default state
+    // onSearchRef.current(''); 
+    // For now, just clearing the input. The parent component can decide how to handle empty search.
   };
 
   const handleFocus = () => {
@@ -120,11 +142,23 @@ export default function SearchBar({
             {loading ? (
               <LoadingSpinner size="sm" />
             ) : (
-              <Search className={`w-5 h-5 transition-colors ${
+              <Search className={`w-5 h-5 transition-colors ${ 
                 isFocused ? 'text-blue-400' : 'text-gray-400'
               }`} />
             )}
           </div>
+
+          {/* Clear Search Button */}
+          {searchQuery && isFocused && !loading && (
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className="absolute right-4 top-1/2 transform -translate-y-1/2 p-1 text-gray-500 hover:text-gray-300 transition-colors"
+              aria-label="Clear search query"
+            >
+              <XIcon className="w-5 h-5" />
+            </button>
+          )}
 
           {/* Focus ring */}
           {isFocused && (
@@ -133,8 +167,19 @@ export default function SearchBar({
         </div>
 
         {/* Search History Dropdown */}
-        {showHistory && searchHistory.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-gray-900/95 backdrop-blur-sm border border-gray-700/50 rounded-xl shadow-xl z-50 max-h-64 overflow-y-auto">
+        <div 
+          className={`
+            absolute top-full left-0 right-0 mt-2 z-50 
+            max-h-64 overflow-y-auto 
+            bg-gray-900/95 backdrop-blur-sm border border-gray-700/50 rounded-xl shadow-xl
+            transition-all duration-300 ease-in-out
+            ${showHistory && searchHistory.length > 0 
+              ? 'opacity-100 scale-100 translate-y-0' 
+              : 'opacity-0 scale-95 -translate-y-2 pointer-events-none'
+            }
+          `}
+        >
+          {searchHistory.length > 0 && ( // Keep rendering children if history exists, let opacity/pointer-events handle visibility
             <div className="p-2">
               <div className="flex items-center justify-between px-3 py-2 text-xs text-gray-400 uppercase tracking-wide">
                 <span>Recherches récentes</span>
@@ -160,8 +205,8 @@ export default function SearchBar({
                 </button>
               ))}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </form>
   );

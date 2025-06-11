@@ -1,4 +1,4 @@
-import { Source, ChaptersResult, ChapterData } from '@/app/types/source';
+import { Source, ChaptersResult, ChapterData, SourceSearchResultItem } from '@/app/types/source'; // Import SourceSearchResultItem
 import { launchBrowser } from '@/app/utils/launchBrowser';
 import { logger } from '@/app/utils/logger';
 
@@ -27,7 +27,7 @@ export const toomicsSource: Source = {
   // Configuration pour le contenu adulte (à activer/désactiver selon les besoins)
   adultContent: true,
   
-  search: async (title: string) => {
+  search: async (title: string): Promise<SourceSearchResultItem[]> => { // Updated return type
     try {
       const browser = await getBrowser();
       const page = await browser.newPage();
@@ -90,9 +90,10 @@ export const toomicsSource: Source = {
                document.querySelector('.webtoon-item') !== null;
       }, { timeout: 10000 }).catch(() => {
         logger.log('info', 'Temps d\'attente des résultats dépassé sur Toomics');
-      });      // Extraction des résultats
-      const result = await page.evaluate((query: string) => {
-        // Sélecteurs potentiels pour les éléments de résultat (peut varier selon le site)
+      });
+
+      // Extraction des résultats
+      const results: SourceSearchResultItem[] = await page.evaluate((query: string, baseUrl: string) => { // Pass baseUrl
         const selectors = [
           '.list-item', 
           '.search-item',
@@ -109,13 +110,11 @@ export const toomicsSource: Source = {
           }
         }
 
-        if (items.length === 0) return null;
+        if (items.length === 0) return [];
 
-        let bestMatch = null;
-        let bestScore = 0;
+        const collectedResults: SourceSearchResultItem[] = [];
 
         for (const item of items) {
-          // Trouver l'élément du titre (peut être dans différentes balises)
           const titleSelectors = [
             '.title', 
             '.webtoon-title', 
@@ -132,70 +131,62 @@ export const toomicsSource: Source = {
             }
           }
 
-          // Trouver l'élément du lien
           const linkSelectors = [
             'a', 
             '.item-link',
             '.webtoon-link'
           ];
           
-          let link = null;
+          let linkEl = null; // Renamed to avoid conflict with link variable
           for (const selector of linkSelectors) {
             const el = item.querySelector(selector);
             if (el) {
-              link = el;
+              linkEl = el;
               break;
             }
           }
+          
+          // Try to get cover image
+          const coverImg = item.querySelector('img');
+          const cover = coverImg ? coverImg.src : '';
 
-          if (titleEl && link) {
-            const title = titleEl.textContent?.trim().toLowerCase() || '';
-            const href = link.getAttribute('href') || '';
+
+          if (titleEl && linkEl) {
+            const itemTitle = titleEl.textContent?.trim() || '';
+            const href = linkEl.getAttribute('href') || '';
             
-            // Extraire l'ID du titre à partir de l'URL (format peut varier)
-            // Toomics utilise généralement un format comme /webtoon/episode/123
-            const match = href.match(/\/webtoon\/[^\/]+\/(\d+)/);
-            const titleId = match ? match[1] : null;
+            const match = href.match(/\/webtoon\/[^\/]+\/(\d+)/) || href.match(/\/webtoon\/(\d+)/); // More general ID match
+            const titleId = match ? (match[1] || match[2]) : null;
 
-            if (titleId) {
-              // Calculer la pertinence du résultat par rapport à la recherche
-              const words1 = query.toLowerCase().split(' ');
-              const words2 = title.split(' ');
-              const commonWords = words1.filter(w => words2.includes(w));
-              const score = commonWords.length / Math.max(words1.length, words2.length);
 
-              if (score > bestScore) {
-                bestScore = score;
-                bestMatch = { 
-                  titleId, 
-                  url: href.startsWith('http') ? href : toomicsSource.baseUrl + href,
-                  score,
-                  title
-                };
-              }
+            if (titleId && itemTitle) { // Ensure itemTitle is not empty
+              collectedResults.push({ 
+                id: titleId,
+                title: itemTitle,
+                url: href.startsWith('http') ? href : baseUrl + href,
+                cover: cover,
+                sourceName: 'Toomics',
+              });
             }
           }
         }
+        return collectedResults;
+      }, title, toomicsSource.baseUrl); // Pass baseUrl to evaluate
 
-        return bestMatch;
-      }, title);
+      await page.close();
 
-      await page.close();      if (result && result.score > 0.3) {
-        logger.log('info', 'Manga trouvé sur Toomics', { 
-          query: title, 
-          title: result.title
-        });
-        return { titleId: result.titleId, url: result.url };
+      if (results.length > 0) {
+        logger.log('info', `Toomics search successful. Found ${results.length} items.`, { query: title, count: results.length });
+      } else {
+        logger.log('info', 'Manga non trouvé sur Toomics ou aucun résultat extrait', { query: title });
       }
-
-      logger.log('info', 'Manga non trouvé sur Toomics', { query: title });
-      return { titleId: null, url: null };
+      return results;
 
     } catch (error) {
       logger.log('error', 'Erreur lors de la recherche sur Toomics', {
         error: error instanceof Error ? error.message : 'Erreur inconnue'
       });
-      return { titleId: null, url: null };
+      return [];
     }
   },
 

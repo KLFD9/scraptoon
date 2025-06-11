@@ -1,4 +1,4 @@
-import { Source, ChaptersResult, ChapterData } from '../../types/source';
+import { Source, ChaptersResult, ChapterData, SourceSearchResultItem, SourceSearchParams } from '../../types/source'; // Added SourceSearchParams
 import { logger } from '../../utils/logger';
 import { Cache } from '../../utils/cache';
 import { retry } from '../../utils/retry';
@@ -8,9 +8,18 @@ import * as cheerio from 'cheerio';
 const agent = new Agent({ keepAliveTimeout: 30000 });
 setGlobalDispatcher(agent);
 
-const BASE_URL = (process.env.MANGAKAKALOT_URL || 'https://mangakakalot.gg').replace(/\/$/, '');
+const BASE_URL = (process.env.MANGAKAKALOT_URL || 'https://mangakakalot.gg').replace(/\/$/, ''); // Corrected regex
 
-const searchCache = new Cache<{ titleId: string | null; url: string | null }>(3600_000);
+export interface MangakakalotSearchResultItem {
+  id: string;
+  title: string;
+  url: string;
+  cover: string;
+  sourceName: 'Mangakakalot'; // Align with new SourceSearchResultItem
+}
+
+// Cache for the list of results
+const searchCache = new Cache<MangakakalotSearchResultItem[]>(3600_000);
 
 const sanitize = (str: string) => str.replace(/[^a-zA-Z0-9\s'-]/g, '').trim();
 
@@ -22,71 +31,88 @@ function secureFetch(url: string) {
 export const mangakakalotSource: Source = {
   name: 'mangakakalot',
   baseUrl: BASE_URL,
-  async search(title: string) {
+  async search(title: string, params?: SourceSearchParams): Promise<SourceSearchResultItem[]> { 
     const sanitizedUserQuery = sanitize(title).toLowerCase();
-    const cacheKey = `mangakakalot_search_${sanitizedUserQuery}`;
-    const cached = await searchCache.get(cacheKey);
-    if (cached) {
-      logger.log('info', `Cache hit for mangakakalot search. Sanitized: ${sanitizedUserQuery}`, { query: title });
-      return cached;
+    const cacheKey = `mangakakalot_search_list_${sanitizedUserQuery}`;
+
+    // Handle refreshCache first
+    if (params?.refreshCache) {
+      logger.log('info', `Mangakakalot cache explicitly bypassed for key: ${cacheKey} due to refreshCache=true`, { query: title });
+      await searchCache.delete(cacheKey);
+    } else {
+      // If not refreshing, try to get from cache
+      const cached = await searchCache.get(cacheKey);
+      if (cached) {
+        logger.log('info', `Cache hit for mangakakalot search list. Sanitized: ${sanitizedUserQuery}`, { query: title });
+        return cached;
+      }
     }
+    // If cache was bypassed or if it was a cache miss, proceed to fetch
+    logger.log('info', `Mangakakalot: Fetching fresh data for key: ${cacheKey} (refresh: ${!!params?.refreshCache})`, { query: title });
+
     try {
-      const searchUrl = `${BASE_URL}/search/story/${encodeURIComponent(sanitize(title))}`; // Use original sanitize for URL
+      const searchUrl = `${BASE_URL}/search/story/${encodeURIComponent(sanitize(title))}`;
       logger.log('debug', `Mangakakalot search URL: ${searchUrl}`, { query: title });
       const res = await secureFetch(searchUrl);
       const html = await res.text();
+      // Log the first 500 characters of the HTML to see if we get a valid page or an error/empty page
+      logger.log('debug', `Mangakakalot raw HTML (first 500 chars): ${html.substring(0, 500)}`, { query: title });
+
+      // Check for Cloudflare interstitial page
+      if (html.includes("Just a moment...") || html.includes("Verifying you are human") || html.includes("challenge-platform")) {
+        logger.log('warning', `Mangakakalot: Detected Cloudflare interstitial page for query: "${title}". Returning empty results.`, { query: title, htmlExcerpt: html.substring(0, 500) });
+        return [];
+      }
+
       const $ = cheerio.load(html);
       const items = $('.story_item').toArray();
-      let best: { id: string; url: string; score: number; siteTitle: string } | null = null;
-      
-      const queryWords = sanitizedUserQuery.split(/\s+/).filter(w => w.length > 0);
-      if (queryWords.length === 0) {
-        logger.log('info', `Mangakakalot search: sanitized query resulted in no words. Sanitized: ${sanitizedUserQuery}`, { query: title });
-        return { titleId: null, url: null };
-      }
+      // Log the number of items found by Cheerio selector
+      logger.log('debug', `Mangakakalot: Found ${items.length} items with selector '.story_item'`, { query: title });
+
+      const results: MangakakalotSearchResultItem[] = [];
 
       for (const el of items) {
-        const link = $(el).find('.story_name a').first();
-        const href = link.attr('href') || '';
-        const siteTitleRaw = link.text().trim();
-        const siteTitleSanitized = sanitize(siteTitleRaw).toLowerCase();
+        const linkElement = $(el).find('.story_name a').first();
+        const href = linkElement.attr('href') || '';
+        const siteTitleRaw = linkElement.text().trim();
         
+        // Log extracted data for each item
+        logger.log('debug', `Mangakakalot item processing: Title='${siteTitleRaw}', Href='${href}'`, { query: title });
+
         const mangaIdMatch = href.match(/\/manga\/([^/?]+)/); // Corrected Regex
-        if (!mangaIdMatch) continue;
-
-        const siteTitleWords = siteTitleSanitized.split(/\s+/).filter(w => w.length > 0);
-        if (siteTitleWords.length === 0) continue;
-
-        const commonWords = queryWords.filter(w => siteTitleWords.includes(w));
-        const score = commonWords.length / Math.max(queryWords.length, siteTitleWords.length, 1);
-
-        logger.log('debug', `Mangakakalot search item scoring. Site: ${siteTitleRaw} (Sanitized: ${siteTitleSanitized}), Score: ${score}, ID: ${mangaIdMatch[1]}`, { query: title });
-
-        if (!best || score > best.score) {
-          best = { id: mangaIdMatch[1], url: href.startsWith('http') ? href : `${BASE_URL}${href}`, score, siteTitle: siteTitleRaw };
+        if (!mangaIdMatch || !mangaIdMatch[1]) {
+          logger.log('debug', `Mangakakalot search: Skipping item, no mangaId found. Title: ${siteTitleRaw}, Href: ${href}`, { query: title });
+          continue;
         }
+
+        const coverElement = $(el).find('img').first();
+        const cover = coverElement.attr('src') || '';
+        
+        if (!siteTitleRaw || !href) {
+            logger.log('debug', `Mangakakalot search: Skipping item due to missing title or href. Title: ${siteTitleRaw}, Href: ${href}`, { query: title });
+            continue;
+        }
+
+        results.push({
+          id: mangaIdMatch[1],
+          title: siteTitleRaw,
+          url: href.startsWith('http') ? href : `${BASE_URL}${href}`,
+          cover: cover,
+          sourceName: 'Mangakakalot',
+        });
       }
 
-      if (best) {
-        logger.log('debug', `Mangakakalot best match candidate. Found: ${best.siteTitle} (ID: ${best.id}), Score: ${best.score}, Threshold: 0.3`, { query: title });
+      if (results.length > 0) {
+        logger.log('info', `Mangakakalot search successful. Found ${results.length} items for query: "${title}"`, { query: title, count: results.length });
       } else {
-        logger.log('debug', 'Mangakakalot no match candidates found after loop', { query: title });
-      }
-
-      if (!best || best.score < 0.3) {
-        logger.log('info', `Mangakakalot: Best match score below threshold or no match. Best score: ${best?.score}, Threshold: 0.3, Found: ${best?.siteTitle}`, { query: title });
-        const empty = { titleId: null, url: null } as const;
-        await searchCache.set(cacheKey, empty);
-        return empty;
+        logger.log('info', `Mangakakalot: No items found for query: "${title}"`, { query: title });
       }
       
-      const result = { titleId: best.id, url: best.url } as const;
-      await searchCache.set(cacheKey, result);
-      logger.log('info', `Mangakakalot search successful. Result ID: ${result.titleId}, Score: ${best.score}`, { query: title });
-      return result;
+      await searchCache.set(cacheKey, results);
+      return results;
     } catch (err) {
-      logger.log('error', 'Mangakakalot search error', { error: err instanceof Error ? err.message : String(err) });
-      return { titleId: null, url: null };
+      logger.log('error', 'Mangakakalot search error', { error: err instanceof Error ? err.message : String(err), query: title });
+      return [];
     }
   },
   async getChapters(titleId: string, url: string): Promise<ChaptersResult> {

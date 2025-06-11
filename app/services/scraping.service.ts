@@ -1,14 +1,19 @@
 import { Manga } from '../types/manga';
 import { logger } from '../utils/logger';
 
-export async function scrapeManga(query: string): Promise<Manga[]> {
+export async function scrapeManga(query: string, forceRefresh: boolean = false): Promise<Manga[]> {
   try {
+    const bodyPayload: { searchQuery: string; refreshCache?: boolean } = { searchQuery: query };
+    if (forceRefresh) {
+      bodyPayload.refreshCache = true;
+    }
+
     const response = await fetch('/api/scraper', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ searchQuery: query }),
+      body: JSON.stringify(bodyPayload),
     });
 
     if (!response.ok) {

@@ -18,71 +18,73 @@ export interface LogData {
   query?: string;
   searchQuery?: string;
   html?: string;
-  timestamp?: string;
-  page?: number;
-  limit?: number;
-  chaptersCount?: number;
+  htmlExcerpt?: string; // Added for Cloudflare detection logging
+  refreshCache?: boolean;
+  cacheKey?: string;
+  source?: string;
+  count?: number;
   status?: number;
   statusText?: string;
-  response?: unknown;
-  title?: string;
-  titles?: string[];
-  availableLanguages?: string[];
-  source?: string;
-  titleId?: string;
-  totalChapters?: number;
-  firstChapter?: ChapterInfo;
-  lastChapter?: ChapterInfo;
-  cacheKey?: string;
-  executionTime?: number;
-  maxRetries?: number;
-  delay?: number;
-  blockStatus?: {
-    isBlocked: boolean;
-    hasValidContent: boolean;
-    indicators: Record<string, boolean>;
-  };
-
-  params?: Record<string, unknown>;
-  variants?: string[];
-  original?: string;
-  totalPages?: number;
-  count?: number;
-  favoritesCount?: number;
-  candidatesCount?: number;
-  needed?: number;
-  author?: string;
-  reason?: string;
-  candidate?: string;
-  favorite?: string;
-  commonWords?: string[];
-  total?: number;
-  sourceResults?: any;
+  headers?: Record<string, string>;
+  params?: any;
+  results?: any[];
+  durationMs?: number;
+  userId?: string;
+  sessionId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  platform?: string;
+  screenResolution?: string;
+  language?: string;
+  timezone?: string;
+  path?: string;
+  method?: string;
+  body?: any;
+  response?: any;
+  component?: string;
+  action?: string;
+  details?: any;
+  statusCode?: number;
+  errorMessage?: string;
+  errorDetails?: any;
+  performance?: any;
+  featureFlags?: Record<string, boolean>;
+  abTestVariant?: string;
+  correlationId?: string;
+  serviceName?: string;
+  operationName?: string;
+  traceId?: string;
+  spanId?: string;
+  parentSpanId?: string;
+  // Fields identified from error messages
+  methodName?: string;
+  receivedParams?: any;
+  refreshCacheValue?: boolean;
+  paramsProperties?: string[];
+  refreshCacheValDirect?: boolean;
+  receivedRefreshCache?: boolean;
+  capturedRefreshCacheAtExecution?: boolean;
+  loopCycleRefreshCache?: boolean;
+  resultsReceived?: any;
+  uniqueCount?: number;
+  totalCount?: number;
   resultsCount?: number;
-  historyCount?: number;
-  excludeIds?: string[];
-  authors?: string[];
-  favoritesDetails?: any[];
-  isValidPage?: boolean;
-  pageStatus?: {
-    hasValidContent: boolean;
-    errors: Record<string, boolean>;
-  };
-  proxyInfo?: {
-    ip: string;
-    country: string;
-    status: string;
-  };
-  loading?: boolean; // Added loading property
-  // Additional properties for better logging
-  index?: number;
+  timestamp?: string; // Assuming this is a string like Date().toISOString()
+  executionTime?: number;
+  total?: number; // From MangaDex related logs
+  // Added based on new errors
   chapterId?: string;
-  redisUrl?: string;
-  config?: string; // Added
-  step?: number; // Added
-  selector?: string; // Added
-  language?: string; // Added
-  images?: number | string[]; // Added
+  config?: any; // Consider a more specific type if possible
+  step?: string | number;
+  selector?: string;
+  images?: any[] | number; // Changed from any[] to allow number (e.g. count)
+  titles?: any[]; // Consider a more specific type if possible
+  loading?: boolean;
+  titleId?: string;
+  totalPages?: number;
+  page?: number | string;
+  favoritesCount?: number; // Added for ModernRecommendationsSection.tsx
+  // ... any other relevant fields
 }
 
 export const logger = {

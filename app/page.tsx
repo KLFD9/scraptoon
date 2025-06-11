@@ -39,10 +39,11 @@ export default function Home() {
     }
   }, [searchHistory]);
 
-  const handleSearch = async (query: string) => {
+  const handleSearch = async (query: string, forceRefresh: boolean = false) => {
     setLoading(true);
     try {
-      const mangaResults = await scrapeManga(query);
+      // Pass the forceRefresh flag to scrapeManga
+      const mangaResults = await scrapeManga(query, forceRefresh);
       setResults(mangaResults);
       
       setSearchHistory(prev => {
@@ -160,7 +161,8 @@ export default function Home() {
                       {searchHistory.slice(0, 6).map((query, index) => (
                         <button
                           key={index}
-                          onClick={() => handleSearch(query)}
+                          // Pass true for forceRefresh when a history item is clicked, for testing
+                          onClick={() => handleSearch(query, true)}
                           className="px-3 py-1.5 bg-gray-800 text-gray-300 rounded-lg text-sm hover:bg-gray-700 hover:text-white transition-colors"
                         >
                           {query}

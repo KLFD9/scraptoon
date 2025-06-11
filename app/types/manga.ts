@@ -4,6 +4,7 @@ export interface Manga {
   description: string;
   cover: string;
   url: string;
+  source: string; // Added source field
   type: 'manga' | 'manhwa' | 'manhua';
   status: 'ongoing' | 'completed';
   lastChapter: string;
