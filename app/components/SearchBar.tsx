@@ -21,6 +21,7 @@ export default function SearchBar({
   const [showHistory, setShowHistory] = useState<boolean>(false);
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const searchBarRef = useRef<HTMLDivElement>(null);
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Ref to store debounce timeout
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -34,8 +35,45 @@ export default function SearchBar({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Debounce effect for search query
+  useEffect(() => {
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    // Only set timeout if query is not empty and component is focused or query has meaningful length
+    // This prevents searching an empty string if user clears input, 
+    // and avoids initial search on mount if searchQuery is initially empty.
+    if (searchQuery.trim() && isFocused) { 
+      debounceTimeoutRef.current = setTimeout(() => {
+        // Check loading state again inside timeout, as it might have changed
+        if (!loading) { 
+          onSearch(searchQuery.trim());
+        }
+      }, 300); // 300ms debounce delay
+    } else if (!searchQuery.trim() && debounceTimeoutRef.current) {
+        // If query becomes empty, clear timeout
+        clearTimeout(debounceTimeoutRef.current);
+    }
+    
+    // Cleanup timeout on component unmount
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, [searchQuery, onSearch, loading, isFocused]); // Add loading and isFocused to dependencies
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+    // Debouncing is handled by the useEffect hook watching searchQuery
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (debounceTimeoutRef.current) { // Clear any pending debounce
+      clearTimeout(debounceTimeoutRef.current);
+    }
     if (searchQuery.trim() && !loading) {
       onSearch(searchQuery.trim());
       setShowHistory(false);
@@ -43,8 +81,11 @@ export default function SearchBar({
   };
 
   const handleHistoryItemClick = (query: string) => {
+    if (debounceTimeoutRef.current) { // Clear any pending debounce
+      clearTimeout(debounceTimeoutRef.current);
+    }
     setSearchQuery(query);
-    onSearch(query);
+    onSearch(query); // Search immediately on history click
     setShowHistory(false);
   };
 
@@ -63,7 +104,7 @@ export default function SearchBar({
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={handleInputChange} // Use new handler
             onFocus={handleFocus}
             placeholder="Rechercher un manga..."
             disabled={loading}

@@ -107,7 +107,7 @@ async function searchMangaDex(query: string): Promise<Manga[]> {
 }
 
 async function searchKitsu(query: string): Promise<Manga[]> {
-  const url = `https://kitsu.io/api/edge/manga?filter[text]=${encodeURIComponent(query)}&page[limit]=20&include=categories,authors`;
+  const url = `https://kitsu.io/api/edge/manga?filter[text]=${encodeURIComponent(query)}&page[limit]=20&include=categories`;
   const res = await secureFetch(url);
   if (!res.ok) {
     logger.log('error', 'Kitsu search failed', { status: res.status, query, response: await res.text() });
