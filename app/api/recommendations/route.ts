@@ -462,12 +462,16 @@ export async function POST(request: Request) {
       }
     }
 
-    // Assuming the recommendations logic using history and favorites will be here
-    // For now, let's just return a placeholder based on the main logic's structure
-    const finalRecommendations = await generateRecommendations(history, favorites, limit); // Corrected: Used suggested function name
-    return new Response(JSON.stringify(finalRecommendations), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    const finalRecommendations = await generateRecommendations(
+      history,
+      favorites,
+      limit,
+    );
+
+    return NextResponse.json(
+      { success: true, results: finalRecommendations, cached: false },
+      { status: 200 },
+    );
 
   } catch (error) { // Added catch for the main try block in POST
     console.error('Error in POST /recommendations:', error);
