@@ -8,6 +8,7 @@ import {
   getRecommendationsByType
 } from '@/app/services/staticMangaDatabase';
 import type { Manga } from '@/app/types/manga';
+import { searchMultiSource } from '@/app/services/multiSource'; // Added import
 
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 const cache = new Cache<Manga[]>(CACHE_DURATION);
@@ -152,6 +153,42 @@ async function generateRecommendations(
       titles: recommendations.map(r => r.title)
     });
   }
+
+  // Enrich recommendations with dynamic data, especially covers
+  const enrichedRecommendations: Manga[] = [];
+  for (const staticRec of recommendations) {
+    try {
+      const dynamicResults = await searchMultiSource(staticRec.title);
+      let currentRec = { ...staticRec }; // Start with a copy of the static recommendation
+
+      if (dynamicResults.length > 0) {
+        const dynamicRec = dynamicResults[0];
+        
+        // Update cover if a valid, non-placeholder dynamic cover is found
+        if (dynamicRec.cover && dynamicRec.cover !== '/images/manga-placeholder.svg' && !dynamicRec.cover.toLowerCase().includes('placeholder')) {
+          currentRec.cover = dynamicRec.cover;
+          // Optionally update other fields if they are more complete or accurate from dynamic source
+          currentRec.description = dynamicRec.description || staticRec.description;
+          // currentRec.url = dynamicRec.url || staticRec.url; // Be cautious with URL, static might be internal. For now, keep static.
+          currentRec.status = dynamicRec.status || staticRec.status;
+          currentRec.type = dynamicRec.type || staticRec.type;
+          // Keep original ID from static DB for consistency in recommendation generation logic (excludeIds, etc.)
+        }
+      }
+      enrichedRecommendations.push(currentRec);
+    } catch (error) {
+      logger.log('warning', `Failed to fetch dynamic details for recommendation. Title: ${staticRec.title}, ID: ${staticRec.id}`, { 
+        error: String(error)
+      });
+      enrichedRecommendations.push(staticRec); // Fallback to static recommendation on error
+    }
+  }
+  
+  recommendations = enrichedRecommendations; // Replace with enriched list
+
+  logger.log('info', `📚 Recommandations finales (après enrichissement dynamique). First 3 covers: ${recommendations.slice(0,3).map(r => r.cover.substring(0,30) + (r.cover.startsWith('http') ? '[d]' : '[s]')).join(', ')}`, {
+    count: recommendations.length
+  });
 
   await cache.set(cacheKey, recommendations);
   return recommendations;
