@@ -141,11 +141,12 @@ export default function Home() {
                 
                 {/* New Sections */}
                 <NewestSection onSearch={handleSearch} />
-                <TrendingSection onSearch={handleSearch} />
-                <ThematicCollectionsSection onSearch={handleSearch} />
                 
                 {/* Modern Recommendations Section */}
                 <ModernRecommendationsSection onSearch={handleSearch} />
+                
+                <TrendingSection onSearch={handleSearch} />
+                <ThematicCollectionsSection onSearch={handleSearch} />
                 
                 {/* Recherches récentes */}
                 {searchHistory.length > 0 && (
