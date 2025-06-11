@@ -1,3 +1,4 @@
+import type { Browser, Page } from 'puppeteer';
 import { Source, ChaptersResult, ChapterData } from '@/app/types/source';
 import { launchBrowser } from '@/app/utils/launchBrowser';
 import { logger } from '@/app/utils/logger';
@@ -6,8 +7,8 @@ async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-let browserPromise: Promise<any> | null = null;
-async function getBrowser(): Promise<any> {
+let browserPromise: Promise<Browser> | null = null;
+async function getBrowser(): Promise<Browser> {
   if (!browserPromise) {
     browserPromise = launchBrowser({
       headless: false,
@@ -27,7 +28,6 @@ async function getBrowser(): Promise<any> {
 async function setupBrowser() {
   const browser = await getBrowser();
   const page = await browser.newPage();
-
   await page.evaluateOnNewDocument(() => {
     delete Object.getPrototypeOf(navigator).webdriver;
     // @ts-expect-error -- navigator.chrome is not a standard property
@@ -43,7 +43,6 @@ async function setupBrowser() {
       }]
     });
   });
-
   await page.setExtraHTTPHeaders({
     'Accept-Language': 'fr-FR,fr;q=0.9,en-US;q=0.8,en;q=0.7',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
@@ -59,13 +58,11 @@ async function setupBrowser() {
     'Sec-Fetch-User': '?1',
     'Sec-Fetch-Dest': 'document'
   });
-
   await page.setViewport({ width: 1920, height: 1080 });
-
   return { browser, page };
 }
 
-async function handleCloudflare(page: any): Promise<boolean> {
+async function handleCloudflare(page: Page): Promise<boolean> {
   try {
     logger.log('info', 'Tentative de contournement de Cloudflare');
     await page.waitForFunction(() => {
@@ -103,7 +100,7 @@ async function handleCloudflare(page: any): Promise<boolean> {
   }
 }
 
-async function bypassBlocker(page: any, url: string, maxRetries = 3): Promise<boolean> {
+async function bypassBlocker(page: Page, url: string, maxRetries = 3): Promise<boolean> {
   for (let i = 0; i < maxRetries; i++) {
     try {
       logger.log('info', 'Tentative de contournement du blocage', {
@@ -138,16 +135,19 @@ async function bypassBlocker(page: any, url: string, maxRetries = 3): Promise<bo
             captcha: '#captcha, .captcha, .g-recaptcha',
             cloudflare: '#challenge-form, #cf-challenge-running'
           }
-        };
+        } as const;
         const hasValidContent = !!document.querySelector(selectors.validContent);
         const errors = Object.entries(selectors.errorIndicators).reduce((acc, [key, selector]) => {
-          acc[key] = !!document.querySelector(selector);
+          acc[key as keyof typeof selectors.errorIndicators] = !!document.querySelector(selector);
           return acc;
         }, {} as Record<string, boolean>);
         return { hasValidContent, errors };
       });
       if (pageStatus.hasValidContent) {
-        logger.log('info', 'Contournement réussi', { attempt: i + 1, url });
+        logger.log('info', 'Contournement réussi', {
+          attempt: i + 1,
+          url
+        });
         return true;
       }
       logger.log('warning', 'Page invalide, nouvelle tentative', {
@@ -169,24 +169,20 @@ async function bypassBlocker(page: any, url: string, maxRetries = 3): Promise<bo
 export const mangaScantradSource: Source = {
   name: 'mangascantrad',
   baseUrl: 'https://manga-scantrad.io',
-  search: async (title: string) => {
+  async search(title: string) {
     const { page } = await setupBrowser();
-
     try {
       const formattedTitle = title.toLowerCase()
         .replace(/boku no/i, 'my')
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '');
       const directUrl = `${mangaScantradSource.baseUrl}/manga/${formattedTitle}`;
-      logger.log('info', "Tentative d'accès direct", {
-        title,
-        url: directUrl
-      });
+      logger.log('info', "Tentative d'accès direct", { title, url: directUrl });
       if (await bypassBlocker(page, directUrl)) {
         const pageContent = await page.evaluate(() => {
-          const title = document.querySelector('.manga-title, .series-title')?.textContent?.trim();
+          const titleEl = document.querySelector('.manga-title, .series-title');
           const chapters = document.querySelector('.chapter-list, .chapters-list');
-          return { title, hasChapters: !!chapters };
+          return { title: titleEl?.textContent?.trim(), hasChapters: !!chapters };
         });
         if (pageContent.hasChapters) {
           logger.log('info', 'Page manga trouvée directement', {
@@ -206,11 +202,11 @@ export const mangaScantradSource: Source = {
           const results = Array.from(document.querySelectorAll('.manga-card, .search-result'));
           for (const result of results) {
             const link = result.querySelector('a');
-            const title = result.querySelector('.manga-title, .title')?.textContent?.trim();
+            const titleEl = result.querySelector('.manga-title, .title') as HTMLElement | null;
+            const title = titleEl?.textContent?.trim();
             if (link?.href && title) {
               const titleNormalized = normalizeString(title);
-              if (titleNormalized.includes(searchNormalized) ||
-                  searchNormalized.includes(titleNormalized)) {
+              if (titleNormalized.includes(searchNormalized) || searchNormalized.includes(titleNormalized)) {
                 return { url: link.href, title };
               }
             }
@@ -235,9 +231,8 @@ export const mangaScantradSource: Source = {
       await page.close();
     }
   },
-  getChapters: async (titleId: string, url: string): Promise<ChaptersResult> => {
+  async getChapters(titleId: string, url: string): Promise<ChaptersResult> {
     const { page } = await setupBrowser();
-
     try {
       logger.log('debug', "Tentative d'accès à la page des chapitres", { url });
       if (!await bypassBlocker(page, url)) {
@@ -245,12 +240,7 @@ export const mangaScantradSource: Source = {
       }
       await sleep(3000);
       const hasChapters = await page.evaluate(() => {
-        const selectors = [
-          '.chapter-list',
-          '.chapters-list',
-          '.manga-chapters',
-          '[class*="chapter"]'
-        ];
+        const selectors = ['.chapter-list', '.chapters-list', '.manga-chapters', '[class*="chapter"]'];
         return selectors.some(selector => document.querySelector(selector));
       });
       if (!hasChapters) {
@@ -262,13 +252,11 @@ export const mangaScantradSource: Source = {
           const match = text.match(/(?:chapitre|chapter|ch[.]?)\s*(\d+(?:\.\d+)?)/i);
           return match ? match[1] : null;
         };
-        const chapterElements = Array.from(document.querySelectorAll(
-          '.chapter-item, .chapter-element, .chapter, [class*="chapter"]'
-        ));
+        const chapterElements = Array.from(document.querySelectorAll('.chapter-item, .chapter-element, .chapter, [class*="chapter"]'));
         return chapterElements.map(item => {
           const link = item.querySelector('a');
           const href = link?.getAttribute('href') || '';
-          let chapterNumber = null;
+          let chapterNumber: string | null = null;
           const urlMatch = href.match(/(?:chapitre|chapter|ch)-(\d+(?:\.\d+)?)/i);
           if (urlMatch) chapterNumber = urlMatch[1];
           if (!chapterNumber && link) {
@@ -278,8 +266,8 @@ export const mangaScantradSource: Source = {
             chapterNumber = extractChapterNumber(item.textContent || '');
           }
           const titleElement = item.querySelector('.chapter-title, .title') ||
-                             link?.querySelector('.title') ||
-                             item.querySelector('span:not(.number)');
+                               link?.querySelector('.title') ||
+                               item.querySelector('span:not(.number)');
           const title = titleElement?.textContent?.trim() || null;
           const dateElement = item.querySelector('.chapter-date, .date, time');
           const publishedAt = dateElement?.textContent?.trim() || null;
@@ -291,7 +279,7 @@ export const mangaScantradSource: Source = {
             url: href.startsWith('http') ? href : `https://manga-scantrad.io${href}`,
             source: 'mangascantrad'
           } as ChapterData;
-        }).filter(chapter => chapter.id && chapter.url);
+        }).filter(ch => ch.id && ch.url);
       });
       if (chapters.length === 0) {
         logger.log('warning', 'Aucun chapitre extrait', { url });
@@ -308,8 +296,8 @@ export const mangaScantradSource: Source = {
         totalChapters: chapters.length,
         source: {
           name: 'mangascantrad',
-          url: url,
-          titleId: titleId
+          url,
+          titleId
         }
       };
     } catch (error) {
