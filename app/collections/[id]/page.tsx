@@ -5,9 +5,9 @@ import { useState, useEffect } from 'react';
 import { useCollections } from '@/app/hooks/useCollections';
 import Layout from '@/app/components/Layout';
 import Breadcrumb from '@/app/components/Breadcrumb';
+import EnhancedMangaResults from '@/app/components/EnhancedMangaResults';
 import { ArrowLeft, Star, TrendingUp, BookOpen, Users } from 'lucide-react';
 import type { Manga } from '@/app/types/manga';
-import MangaResults from '@/app/components/MangaResults';
 
 interface CollectionDetails {
   id: string;
@@ -234,7 +234,7 @@ export default function CollectionPage() {
               </h2>
             </div>
             
-            <MangaResults mangas={details.manga} />
+            <EnhancedMangaResults mangas={details.manga} />
           </div>
         </div>
       </div>

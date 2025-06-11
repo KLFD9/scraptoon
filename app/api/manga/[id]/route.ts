@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { Cache } from '@/app/utils/cache';
 import { retry } from '@/app/utils/retry';
 import { logger } from '@/app/utils/logger';
+import { STATIC_MANGA_DATABASE } from '@/app/services/staticMangaDatabase';
 import type {
   MangaDexAggregate,
   MangaDexChaptersResponse,
@@ -80,10 +81,47 @@ export async function GET(
   try {
     const { id: mangaId } = await Promise.resolve(params);
 
+    // Vérifier d'abord si c'est un manga statique
+    if (mangaId.startsWith('static-')) {
+      const staticManga = STATIC_MANGA_DATABASE.find(manga => manga.id === mangaId);
+      if (staticManga) {
+        // Convertir le format Manga vers MangaDetails
+        const mangaDetails: MangaDetails = {
+          id: staticManga.id,
+          title: staticManga.title,
+          description: staticManga.description || '',
+          cover: staticManga.cover,
+          author: staticManga.author,
+          year: staticManga.year ? parseInt(staticManga.year.toString()) : undefined,
+          status: staticManga.status,
+          type: staticManga.type,
+          isAvailableInFrench: staticManga.isAvailableInFrench ?? true,
+          chapterCount: {
+            total: staticManga.chapterCount?.total || 0,
+            french: staticManga.chapterCount?.french || 0,
+          },
+          genres: [], // Les genres pourraient être ajoutés plus tard
+          availableLanguages: ['fr', 'en'],
+          lastChapter: staticManga.lastChapter,
+          videoUrl: null,
+        };
+
+        await mangaCache.set(mangaId, mangaDetails);
+        return NextResponse.json(mangaDetails);
+      } else {
+        return NextResponse.json(
+          { error: 'Manga statique non trouvé' },
+          { status: 404 }
+        );
+      }
+    }
+
     const cached = await mangaCache.get(mangaId);
     if (cached) {
       return NextResponse.json(cached);
     }
+
+    // Construire les URLs de l'API MangaDex pour les mangas réels
 
     // Construire les URLs de l'API MangaDex
     const mangaUrl = `https://api.mangadex.org/manga/${mangaId}?includes[]=author&includes[]=cover_art`;

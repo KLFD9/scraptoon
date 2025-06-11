@@ -1,4 +1,4 @@
-type LogLevel = 'info' | 'warning' | 'error' | 'debug';
+export type LogLevel = 'info' | 'warning' | 'error' | 'debug'; // Export LogLevel
 
 export interface ChapterInfo {
   id: string;

@@ -1,22 +1,40 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { Cache } from '@/app/utils/cache';
-import { logger } from '@/app/utils/logger';
-import { 
-  getRandomStaticRecommendations, 
-  getRecommendationsByAuthor, 
-  getRecommendationsByType
-} from '@/app/services/staticMangaDatabase';
+import { logger, LogLevel } from '@/app/utils/logger'; // Import LogLevel
 import type { Manga } from '@/app/types/manga';
-import { searchMultiSource } from '@/app/services/multiSource'; // Added import
+import { searchMultiSource } from '@/app/services/multiSource';
 
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 const cache = new Cache<Manga[]>(CACHE_DURATION);
 
 interface FavoriteMeta {
-  id: string;
+  id: string; // This ID might be from any source, treat it as a search query if needed.
+  title?: string; // Add title to FavoriteMeta for searching
   author?: string;
   type?: 'manga' | 'manhwa' | 'manhua';
+  genres?: string[]; // Add genres to FavoriteMeta
+}
+
+// Helper to get diverse manga if no specific criteria
+async function getDiversePopularManga(limit: number, excludeIds: string[]): Promise<Manga[]> {
+  logger.log('info', 'Fetching diverse popular manga');
+  const popularGenres = ['action', 'adventure', 'fantasy', 'comedy', 'romance']; // Example genres
+  let results: Manga[] = [];
+  const resultsPerGenre = Math.ceil(limit / popularGenres.length);
+
+  for (const genre of popularGenres) {
+    if (results.length >= limit) break;
+    try {
+      // Using genre as a search query. searchMultiSource will search by title/keyword.
+      // We can refine this if searchMultiSource supports direct genre searches later.
+      const genreResults = await searchMultiSource(genre);
+      results.push(...genreResults.filter(m => !excludeIds.includes(m.id) && !results.some(r => r.id === m.id) && m.cover && !m.cover.includes('placeholder')));
+    } catch (error) {
+      logger.log('warning' as LogLevel, `Failed to fetch popular manga for genre: ${genre}`, { error: String(error) });
+    }
+  }
+  return results.slice(0, limit);
 }
 
 async function generateRecommendations(
@@ -24,26 +42,25 @@ async function generateRecommendations(
   favorites: FavoriteMeta[],
   limit: number
 ): Promise<Manga[]> {
-  // Log détaillé des paramètres d'entrée
-  logger.log('info', '🔍 Génération recommandations - Paramètres', {
-    historyCount: history.length,
-    favoritesCount: favorites.length,
-    limit,
-    favoritesDetails: favorites.map(f => ({ id: f.id, author: f.author, type: f.type }))
+  logger.log('info', '🔍 Dynamic Recommendation Generation - Parameters', {
+    params: { // Use params for generic data
+        historyCount: history.length,
+        favoritesCount: favorites.length,
+        limit,
+        favoritesDetails: favorites.map(f => ({ id: f.id, title: f.title, author: f.author, type: f.type, genres: f.genres }))
+    }
   });
 
-  const cacheKey = `recommendations_${history.sort().join('_')}_${favorites
-    .map((f) => f.id)
+  const cacheKey = `dynamic_recommendations_${history.sort().join('_')}_${favorites
+    .map((f) => f.id || f.title)
     .sort()
     .join('_')}_${limit}`;
   
-  logger.log('info', '🔑 Clé de cache générée', {
-    cacheKey
-  });
+  logger.log('info', '🔑 Dynamic Cache Key Generated', { cacheKey });
     
   const cached = await cache.get(cacheKey);
   if (cached) {
-    logger.log('info', '💾 Recommandations chargées depuis le cache', {
+    logger.log('info', '💾 Dynamic Recommendations Loaded from Cache', {
       count: cached.length,
       titles: cached.map(c => c.title)
     });
@@ -51,152 +68,74 @@ async function generateRecommendations(
   }
 
   let recommendations: Manga[] = [];
-  const excludeIds = [...history, ...favorites.map(f => f.id)];
+  const excludeIds = [...history, ...favorites.map(f => f.id).filter(Boolean) as string[]];
   
-  logger.log('info', '🚫 IDs à exclure', {
-    excludeIds,
-    historyCount: history.length,
-    favoritesCount: favorites.length
-  });
+  logger.log('info', '🚫 IDs to Exclude (Dynamic)', { params: { excludeIds } }); // Use params
   
-  // Si l'utilisateur a des favoris, générer des recommandations personnalisées
   if (favorites.length > 0) {
-    logger.log('info', '🎯 Génération de recommandations personnalisées', {
-      favoritesCount: favorites.length
-    });
+    logger.log('info', '🎯 Generating Personalized Dynamic Recommendations', { params: { favoritesCount: favorites.length } }); // Use params
 
-    const favoriteAuthors = new Set(
-      favorites.map((f) => f.author).filter((a): a is string => Boolean(a))
-    );
+    const favoriteBasedQueries: string[] = [];
+    for (const fav of favorites) {
+      if (fav.title) favoriteBasedQueries.push(fav.title); // Prioritize title
+      if (fav.author) favoriteBasedQueries.push(fav.author); // Then author
+      if (fav.genres && fav.genres.length > 0) favoriteBasedQueries.push(...fav.genres); // Then genres
+    }
     
-    logger.log('info', '👨‍🎨 Auteurs favoris extraits', {
-      authors: Array.from(favoriteAuthors)
-    });
+    // Deduplicate queries
+    const uniqueQueries = Array.from(new Set(favoriteBasedQueries));
+    logger.log('info', '💡 Unique queries from favorites', { params: { uniqueQueries } }); // Use params
 
-    // 1. Recommandations par auteur (même auteur que les favoris)
-    const authorRecommendations: Manga[] = [];
-    for (const author of favoriteAuthors) {
-      const byAuthor = getRecommendationsByAuthor(author, 2, excludeIds);
-      authorRecommendations.push(...byAuthor);
-      logger.log('info', 'Recommandations par auteur ajoutées', {
-        author,
-        count: byAuthor.length,
-        titles: byAuthor.map(m => m.title)
-      });
+    for (const query of uniqueQueries) {
+      if (recommendations.length >= limit) break;
+      try {
+        const searchResults = await searchMultiSource(query);
+        const newRecs = searchResults.filter(
+          m => 
+            !excludeIds.includes(m.id) && 
+            !recommendations.some(r => r.id === m.id) &&
+            m.cover && !m.cover.includes('placeholder') // Ensure valid cover
+        );
+        recommendations.push(...newRecs);
+        excludeIds.push(...newRecs.map(m => m.id)); // Add new recs to exclude list for subsequent queries
+      } catch (error) {
+        logger.log('warning' as LogLevel, `Failed to fetch recommendations for query: ${query}`, { error: String(error) });
+      }
     }
 
-    // 2. Recommandations par type dominant
-    const favoriteTypes = favorites.map(f => f.type).filter(Boolean);
-    if (favoriteTypes.length > 0) {
-      const typeCount = favoriteTypes.reduce((acc, type) => {
-        if (type) acc[type] = (acc[type] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      
-      const dominantType = (Object.keys(typeCount) as Array<'manga' | 'manhwa' | 'manhua'>).reduce((a, b) => 
-        typeCount[a] > typeCount[b] ? a : b
-      );
-
-      const typeRecommendations = getRecommendationsByType(
-        dominantType, 
-        Math.max(2, limit - authorRecommendations.length), 
-        [...excludeIds, ...authorRecommendations.map(m => m.id)]
-      );
-      
-      logger.log('info', 'Recommandations par type ajoutées', {
-        count: typeRecommendations.length,
-        titles: typeRecommendations.map(m => m.title)
-      });
-
-      recommendations = [...authorRecommendations, ...typeRecommendations];
-    } else {
-      recommendations = authorRecommendations;
-    }
-
-    // 3. Compléter avec des recommandations aléatoires si besoin
+    // If not enough recommendations from specific queries, fill with diverse popular manga
     if (recommendations.length < limit) {
-      const remainingCount = limit - recommendations.length;
-      const randomRecommendations = getRandomStaticRecommendations(
-        remainingCount,
-        [...excludeIds, ...recommendations.map(m => m.id)]
-      );
-      
-      recommendations.push(...randomRecommendations);
-      
-      logger.log('info', 'Recommandations aléatoires ajoutées', {
-        count: randomRecommendations.length,
-        titles: randomRecommendations.map(m => m.title)
-      });
+      logger.log('info', 'Filling remaining recommendations with diverse popular manga (favorites based)');
+      const remainingLimit = limit - recommendations.length;
+      const diverseRecs = await getDiversePopularManga(remainingLimit, excludeIds);
+      recommendations.push(...diverseRecs.filter(m => !recommendations.some(r => r.id === m.id)));
     }
-
-    // Limiter au nombre demandé
-    recommendations = recommendations.slice(0, limit);
-
-    logger.log('info', 'Recommandations personnalisées générées avec succès', {
-      total: recommendations.length,
-      titles: recommendations.map(r => r.title)
-    });
 
   } else {
-    // Utilisateur sans favoris : recommandations générales variées
-    logger.log('info', 'Génération de recommandations générales (pas de favoris)');
-    
-    // Mélange de différents types pour la découverte
-    const mangaRecs = getRecommendationsByType('manga', Math.ceil(limit * 0.6), excludeIds);
-    const manhwaRecs = getRecommendationsByType('manhwa', Math.ceil(limit * 0.3), [...excludeIds, ...mangaRecs.map(m => m.id)]);
-    const manhuaRecs = getRecommendationsByType('manhua', Math.ceil(limit * 0.1), [...excludeIds, ...mangaRecs.map(m => m.id), ...manhwaRecs.map(m => m.id)]);
-    
-    recommendations = [...mangaRecs, ...manhwaRecs, ...manhuaRecs].slice(0, limit);
-    
-    logger.log('info', 'Recommandations générales générées', {
-      total: recommendations.length,
-      titles: recommendations.map(r => r.title)
-    });
+    logger.log('info', 'Generating dynamic general recommendations (no favorites)');
+    recommendations = await getDiversePopularManga(limit, excludeIds);
   }
 
-  // Enrich recommendations with dynamic data, especially covers
-  const enrichedRecommendations: Manga[] = [];
-  for (const staticRec of recommendations) {
-    try {
-      const dynamicResults = await searchMultiSource(staticRec.title);
-      let currentRec = { ...staticRec }; // Start with a copy of the static recommendation
+  // Final filtering and slicing
+  recommendations = recommendations
+    .filter(m => m.cover && !m.cover.includes('placeholder') && m.title)
+    .slice(0, limit);
 
-      if (dynamicResults.length > 0) {
-        const dynamicRec = dynamicResults[0];
-        
-        // Update cover if a valid, non-placeholder dynamic cover is found
-        if (dynamicRec.cover && dynamicRec.cover !== '/images/manga-placeholder.svg' && !dynamicRec.cover.toLowerCase().includes('placeholder')) {
-          currentRec.cover = dynamicRec.cover;
-          // Optionally update other fields if they are more complete or accurate from dynamic source
-          currentRec.description = dynamicRec.description || staticRec.description;
-          // currentRec.url = dynamicRec.url || staticRec.url; // Be cautious with URL, static might be internal. For now, keep static.
-          currentRec.status = dynamicRec.status || staticRec.status;
-          currentRec.type = dynamicRec.type || staticRec.type;
-          // Keep original ID from static DB for consistency in recommendation generation logic (excludeIds, etc.)
-        }
-      }
-      enrichedRecommendations.push(currentRec);
-    } catch (error) {
-      logger.log('warning', `Failed to fetch dynamic details for recommendation. Title: ${staticRec.title}, ID: ${staticRec.id}`, { 
-        error: String(error)
-      });
-      enrichedRecommendations.push(staticRec); // Fallback to static recommendation on error
-    }
-  }
-  
-  recommendations = enrichedRecommendations; // Replace with enriched list
-
-  logger.log('info', `📚 Recommandations finales (après enrichissement dynamique). First 3 covers: ${recommendations.slice(0,3).map(r => r.cover.substring(0,30) + (r.cover.startsWith('http') ? '[d]' : '[s]')).join(', ')}`, {
-    count: recommendations.length
+  logger.log('info', `📚 Dynamic final recommendations. First 3 covers: ${recommendations.slice(0,3).map(r => r.cover?.substring(0,30) + (r.cover?.startsWith('http') ? '[d]' : '[s]')).join(', ')}`, {
+    count: recommendations.length,
+    titles: recommendations.map(r => r.title)
   });
 
-  await cache.set(cacheKey, recommendations);
+  if (recommendations.length > 0) {
+    await cache.set(cacheKey, recommendations);
+  }
   return recommendations;
 }
 
 export async function POST(request: Request) {
   try {
-    const { limit = 6, favorites = [] } = await request.json();
+    // Ensure FavoriteMeta includes title and genres if available from client
+    const { limit = 6, favorites = [] }: { limit?: number; favorites?: FavoriteMeta[] } = await request.json();
     const cookieStore = cookies();
     const historyCookie = (await cookieStore).get('reading_history');
     let history: string[] = [];

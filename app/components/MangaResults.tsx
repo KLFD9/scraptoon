@@ -1,9 +1,9 @@
 'use client';
 
 import { Manga } from '../types/manga';
-import Image from 'next/image';
 import Link from 'next/link';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, Star } from 'lucide-react';
+import OptimizedMangaImage from './OptimizedMangaImage';
 
 interface MangaResultsProps {
   mangas: Manga[];
@@ -36,11 +36,10 @@ export default function MangaResults({ mangas }: MangaResultsProps) {
         >
           {/* Image Container */}
           <div className="relative aspect-[3/4] overflow-hidden">
-            <Image
+            <OptimizedMangaImage
               src={manga.cover}
               alt={manga.title}
-              fill
-              className="object-cover group-hover:scale-105 transition-transform duration-300"
+              className="w-full h-full group-hover:scale-105 transition-transform duration-300"
               sizes="(max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1024px) 20vw, (max-width: 1280px) 16vw, 14vw"
             />
             
@@ -75,7 +74,7 @@ export default function MangaResults({ mangas }: MangaResultsProps) {
               {manga.title}
             </h3>
             
-            <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center justify-between text-xs mb-1">
               <span className={`px-1.5 py-0.5 rounded text-xs ${
                 manga.status === 'ongoing' 
                   ? 'bg-green-900/30 text-green-400' 
@@ -84,12 +83,22 @@ export default function MangaResults({ mangas }: MangaResultsProps) {
                 {manga.status === 'ongoing' ? 'En cours' : 'Terminé'}
               </span>
               
-              {manga.author && (
-                <span className="text-gray-400 truncate ml-1 text-xs hidden sm:inline">
-                  {manga.author.split(' ')[0]}
-                </span>
+              {/* Score display */}
+              {(manga.score || manga.rating) && typeof (manga.score || manga.rating) === 'number' && (
+                <div className="flex items-center gap-1 text-yellow-400">
+                  <Star className="w-3 h-3 fill-yellow-400" />
+                  <span className="text-xs font-medium">
+                    {((manga.score || manga.rating) as number).toFixed(1)}
+                  </span>
+                </div>
               )}
             </div>
+            
+            {manga.author && (
+              <div className="text-gray-400 truncate text-xs hidden sm:block">
+                {manga.author.split(' ')[0]}
+              </div>
+            )}
           </div>
         </Link>
       ))}

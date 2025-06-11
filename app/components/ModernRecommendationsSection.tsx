@@ -167,7 +167,8 @@ function RecommendationCard({ manga, onClick }: RecommendationCardProps) {
   // Use manga.cover if available and no error, otherwise fallback to DEFAULT_COVER
   const coverSrc = imageError || !manga.cover ? DEFAULT_COVER : manga.cover;
   const displayRating = (() => {
-    const rawValue = manga.rating;
+    // Prioritize score first, then fall back to rating
+    const rawValue = manga.score || manga.rating;
     if (typeof rawValue === 'number') {
       return rawValue;
     }

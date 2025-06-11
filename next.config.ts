@@ -3,7 +3,6 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // Améliorer l'hydratation
   reactStrictMode: true,
-  swcMinify: true,
   
   // Optimisations pour éviter les problèmes d'hydratation
   experimental: {

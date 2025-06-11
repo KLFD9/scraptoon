@@ -14,7 +14,9 @@ export interface Manga {
   author?: string;
   artist?: string;
   year?: string;
-  rating?: 'safe' | 'suggestive' | 'erotica' | 'pornographic';
+  contentRating?: 'safe' | 'suggestive' | 'erotica' | 'pornographic'; // Contenu approprié
+  score?: number; // Note sur 10
+  rating?: number; // Note sur 10 (alias pour score)
   isAvailableInFrench?: boolean;
   availableLanguages?: string[];
   originalLanguage?: string;
