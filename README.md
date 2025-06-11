@@ -92,6 +92,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
  - Chapters are fetched concurrently from MangaDex, Webtoons and Komga, returning the fastest result.
 - Connection pooling via `undici` enables HTTP/2 requests with configurable concurrency.
 - Source handlers are modularized under `app/services/sources` for easier maintenance.
+- New `mangakakalot` source leverages Cheerio for scraping with cached results.
 - Request queue ensures a controlled number of concurrent scraping jobs with configurable backoff.
 
 
@@ -139,6 +140,7 @@ MAX_QUEUE_CONCURRENT=3
 MAX_QUEUE_SIZE=50
 RETRY_ATTEMPTS=3
 RETRY_BASE_DELAY=1000
+MANGAKAKALOT_URL=https://mangakakalot.com
 ```
 
 `MAX_QUEUE_CONCURRENT` controls how many scraping jobs run in parallel, while `MAX_QUEUE_SIZE` limits the number of queued requests. `RETRY_ATTEMPTS` and `RETRY_BASE_DELAY` tune the exponential backoff used when fetching chapters fails.

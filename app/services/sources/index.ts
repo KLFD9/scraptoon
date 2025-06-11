@@ -1,19 +1,21 @@
-import mangaScantradSource from './mangascantrad'; // Corrected casingt { Source } from '@/app/types/source';
+import { Source } from '@/app/types/source';
+import mangaScantradSource from './mangascantrad';
 import toomicsSource from './toomics';
 import webtoonSource from './webtoons';
 import komgaSource from './komga';
 import mangadexSource from './mangadex';
-import { Source } from '@/app/types/source';
+import mangakakalotSource from './mangakakalot';
 
 export const sources: Record<string, Source> = {
   toomics: toomicsSource,
   webtoons: webtoonSource,
   komga: komgaSource,
   mangascantrad: mangaScantradSource,
-  mangadex: mangadexSource
+  mangadex: mangadexSource,
+  mangakakalot: mangakakalotSource
 };
 
-export { toomicsSource, webtoonSource, komgaSource, mangaScantradSource, mangadexSource };
+export { toomicsSource, webtoonSource, komgaSource, mangaScantradSource, mangadexSource, mangakakalotSource };
 
 export function getAllSources(): Source[] {
   return Object.values(sources);
