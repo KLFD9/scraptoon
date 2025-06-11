@@ -240,27 +240,23 @@ async function searchToomics(query: string): Promise<Manga[]> {
 
 async function searchMangakakalot(query: string, params?: SourceSearchParams): Promise<Manga[]> {
   try {
-    // Detailed log for the received params object
-    logger.log('debug', `[multiSource.searchMangakakalot] Entry. query: '${query}'. Received params object: ${JSON.stringify(params)}`, 
-      { methodName: 'searchMangakakalot', query, receivedParams: params }
-    );
-
     const localRefreshCache = params?.refreshCache;
-    logger.log('debug', `[multiSource.searchMangakakalot] Value of params.refreshCache: ${localRefreshCache}`, 
-      { methodName: 'searchMangakakalot', query, refreshCacheValue: localRefreshCache }
-    );
+    // logger.log('debug', `[multiSource.searchMangakakalot] Entry. query: '${query}'. Received params object: ${JSON.stringify(params)}`, 
+    //   { methodName: 'searchMangakakalot', query, receivedParams: params }
+    // ); 
+    // logger.log('debug', `[multiSource.searchMangakakalot] Value of params.refreshCache: ${localRefreshCache}`, 
+    //   { methodName: 'searchMangakakalot', query, refreshCacheValue: localRefreshCache }
+    // );
+    // if (params) {
+    //   logger.log('debug', `[multiSource.searchMangakakalot] Detailed check: params object exists. Has 'refreshCache' property: ${Object.prototype.hasOwnProperty.call(params, 'refreshCache')}. Value from prop: ${params.refreshCache}`, 
+    //     { methodName: 'searchMangakakalot', query, paramsProperties: Object.keys(params), refreshCacheValDirect: params.refreshCache }
+    //   );
+    // } else {
+    //   logger.log('debug', `[multiSource.searchMangakakalot] Detailed check: params object is undefined/null.`, 
+    //     { methodName: 'searchMangakakalot', query }
+    //   );
+    // }
     
-    if (params) {
-      logger.log('debug', `[multiSource.searchMangakakalot] Detailed check: params object exists. Has 'refreshCache' property: ${Object.prototype.hasOwnProperty.call(params, 'refreshCache')}. Value from prop: ${params.refreshCache}`, 
-        { methodName: 'searchMangakakalot', query, paramsProperties: Object.keys(params), refreshCacheValDirect: params.refreshCache }
-      );
-    } else {
-      logger.log('debug', `[multiSource.searchMangakakalot] Detailed check: params object is undefined/null.`, 
-        { methodName: 'searchMangakakalot', query }
-      );
-    }
-    
-    // Use localRefreshCache when creating search parameters for the actual source
     const searchParametersForSource: SourceSearchParams = { 
       refreshCache: localRefreshCache 
     };
@@ -305,9 +301,9 @@ async function searchMangakakalot(query: string, params?: SourceSearchParams): P
 }
 
 export async function searchMultiSource(query: string, refreshCache?: boolean): Promise<Manga[]> {
-  logger.log('debug', `[searchMultiSource] Entry. query: "${query}", refreshCache value received: ${refreshCache}`, 
-    { methodName: 'searchMultiSource', query, receivedRefreshCache: refreshCache }
-  );
+  // logger.log('debug', `[searchMultiSource] Entry. query: "${query}", refreshCache value received: ${refreshCache}`, 
+  //   { methodName: 'searchMultiSource', query, receivedRefreshCache: refreshCache }
+  // );
 
   const sources = [
     { name: 'MangaDex', fn: searchMangaDex },
@@ -317,9 +313,9 @@ export async function searchMultiSource(query: string, refreshCache?: boolean): 
     { 
       name: 'Mangakakalot', 
       fn: (q: string) => {
-        logger.log('debug', `[searchMultiSource] Mangakakalot wrapper function executing. Captured refreshCache: ${refreshCache}`, 
-          { methodName: 'MangakakalotWrapper', query: q, capturedRefreshCacheAtExecution: refreshCache }
-        );
+        // logger.log('debug', `[searchMultiSource] Mangakakalot wrapper function executing. Captured refreshCache: ${refreshCache}`, 
+        //   { methodName: 'MangakakalotWrapper', query: q, capturedRefreshCacheAtExecution: refreshCache }
+        // );
         return searchMangakakalot(q, { refreshCache }); 
       }
     }, 
@@ -329,26 +325,26 @@ export async function searchMultiSource(query: string, refreshCache?: boolean): 
   try {
     const promises = sources.map(async (source) => {
       try {
-        logger.log('info', `[searchMultiSource] Loop: About to search ${source.name}. Query: "${query}". Current searchMultiSource refreshCache: ${refreshCache}`, 
-          { methodName: 'searchMultiSourceLoop', query, source: source.name, loopCycleRefreshCache: refreshCache }
+        logger.log('info', `[searchMultiSource] Searching ${source.name} for "${query}" (refresh: ${!!refreshCache})`, 
+          { query, source: source.name, refreshCache: !!refreshCache }
         );
         
         const results = await source.fn(query); 
         
-        logger.log('info', `[searchMultiSource] Loop: Found ${results.length} results from ${source.name}. Query: "${query}"`, 
-          { methodName: 'searchMultiSourceLoop', query, source: source.name, count: results.length }
+        logger.log('info', `[searchMultiSource] Found ${results.length} results from ${source.name} for "${query}"`, 
+          { query, source: source.name, count: results.length }
         );
         if (Array.isArray(results)) { 
           allResults.push(...results);
         } else {
-          logger.log('warning', `[searchMultiSource] Loop: Source ${source.name} did not return an array. Query: "${query}"`, 
-            { methodName: 'searchMultiSourceLoop', query, source: source.name, resultsReceived: results }
+          logger.log('warning', `[searchMultiSource] Source ${source.name} did not return an array for "${query}"`, 
+            { query, source: source.name, resultsReceived: typeof results }
           );
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        logger.log('error', `[searchMultiSource] Loop: Error searching ${source.name}. Query: "${query}"`, 
-          { methodName: 'searchMultiSourceLoop', query, source: source.name, error: errorMessage }
+        logger.log('error', `[searchMultiSource] Error searching ${source.name} for "${query}"`, 
+          { query, source: source.name, error: errorMessage }
         );
       }
     });
@@ -356,13 +352,12 @@ export async function searchMultiSource(query: string, refreshCache?: boolean): 
     await Promise.all(promises);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    logger.log('error', `[searchMultiSource] General error. Query: "${query}"`, 
-      { methodName: 'searchMultiSource', query, error: errorMessage }
+    logger.log('error', `[searchMultiSource] General error during multi-source search for "${query}"`, 
+      { query, error: errorMessage }
     );
-  } finally {
-  }
+  } 
 
   const uniqueResults = Array.from(new Map(allResults.map(m => [`${m.source}-${m.title.toLowerCase()}`, m])).values());
-  logger.log('info', `[searchMultiSource] Returning ${uniqueResults.length} unique results out of ${allResults.length} total. Query: "${query}"`, { methodName: 'searchMultiSource', query, uniqueCount: uniqueResults.length, totalCount: allResults.length });
+  logger.log('info', `[searchMultiSource] Returning ${uniqueResults.length} unique results (from ${allResults.length} total) for "${query}"`, { query, uniqueCount: uniqueResults.length, totalCount: allResults.length });
   return uniqueResults;
 }

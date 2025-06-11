@@ -58,13 +58,13 @@ async function handlePost(request: Request) {
 
     if (refreshCache === true) {
       await cache.delete(cacheKey);
-      logger.log('info', `[API Route] Cache for key '${cacheKey}' deleted due to refreshCache=true`, { query: sanitizedQuery, cacheKey });
+      logger.log('info', `[API Route] Cache for '${cacheKey}' deleted (refresh requested).`, { query: sanitizedQuery, cacheKey });
     }
 
     if (refreshCache !== true) {
       const cachedData = await cache.get(cacheKey);
       if (cachedData) {
-        logger.log('info', '[API Route] Results returned from cache', {
+        logger.log('info', '[API Route] Results from cache.', {
           query: sanitizedQuery,
           resultsCount: cachedData.length,
           cacheKey
@@ -79,23 +79,18 @@ async function handlePost(request: Request) {
           }
         });
       }
-      logger.log('info', `[API Route] Cache miss for key '${cacheKey}'`, { query: sanitizedQuery, cacheKey });
+      logger.log('info', `[API Route] Cache miss for '${cacheKey}'.`, { query: sanitizedQuery, cacheKey });
     }
     
-    logger.log('debug', `[API Route] Fetching fresh search results (cache miss or refresh requested). Refresh status: ${refreshCache === true}`, {
-      query: sanitizedQuery,
-      timestamp: new Date().toISOString()
-    });
-
     const searchStartTime = Date.now();
-    logger.log('info', `[API Route] Before calling searchMultiSource for query: "${sanitizedQuery}"`, { query: sanitizedQuery, refreshCache }); // Log the refreshCache value being passed
-    const aggregated = await searchMultiSource(sanitizedQuery, refreshCache); // Pass refreshCache here
+    logger.log('info', `[API Route] Calling searchMultiSource for "${sanitizedQuery}" (refresh: ${!!refreshCache})`, { query: sanitizedQuery, refreshCache: !!refreshCache });
+    const aggregated = await searchMultiSource(sanitizedQuery, refreshCache);
     const searchExecutionTime = Date.now() - searchStartTime;
-    logger.log('info', `[API Route] After calling searchMultiSource. Received ${aggregated.length} results for query: "${sanitizedQuery}" in ${searchExecutionTime}ms`, { query: sanitizedQuery, resultsCount: aggregated.length, executionTime: searchExecutionTime });
+    logger.log('info', `[API Route] searchMultiSource returned ${aggregated.length} results for "${sanitizedQuery}" in ${searchExecutionTime}ms`, { query: sanitizedQuery, resultsCount: aggregated.length, executionTime: searchExecutionTime });
 
     if (aggregated.length > 0) {
       await cache.set(cacheKey, aggregated);
-      logger.log('info', '[API Route] Multi-source results fetched, cached, and returned', { 
+      logger.log('info', '[API Route] Multi-source results fetched, cached, and returned.', { 
         query: sanitizedQuery, 
         resultsCount: aggregated.length,
         cacheKey,
@@ -117,40 +112,24 @@ async function handlePost(request: Request) {
     logger.log('warning', `[API Route] Multi-source search returned 0 results for "${sanitizedQuery}". Falling back to MangaDex.`, { query: sanitizedQuery, executionTime: searchExecutionTime });
     
     const mangaDexFallbackStartTime = Date.now();
-    // Construction des paramètres de recherche
     const params = new URLSearchParams();
     
-    // Paramètres de base
     params.append('title', sanitizedQuery);
     params.append('limit', '20');
     params.append('offset', '0');
-    
-    // Inclure les relations nécessaires
     params.append('includes[]', 'cover_art');
     params.append('includes[]', 'author');
     params.append('includes[]', 'artist');
-    
-    // Filtres de contenu
     params.append('contentRating[]', 'safe');
     params.append('contentRating[]', 'suggestive');
-    
-    // Langue
     params.append('availableTranslatedLanguage[]', 'fr');
-    
-    // Ordre des résultats
     params.append('order[relevance]', 'desc');
-    
-    // Paramètres de recherche avancés
     params.append('hasAvailableChapters', 'true');
-    
-    // Recherche dans le titre original et les titres alternatifs
     params.append('originalLanguage[]', 'ja');
     params.append('originalLanguage[]', 'ko');
     params.append('originalLanguage[]', 'zh');
 
-    // Requête à l'API MangaDex
     const url = `https://api.mangadex.org/manga?${params.toString()}`;
-    logger.log('debug', 'URL de recherche', { url });
 
     const response = await retry(
       () =>
@@ -175,10 +154,6 @@ async function handlePost(request: Request) {
     }
 
     const data: MangaDexSearchResponse = await response.json();
-    logger.log('debug', 'Réponse API reçue', {
-      total: data.total,
-      count: data.data?.length || 0
-    });
 
     if (!data.data || !Array.isArray(data.data)) {
       throw new Error('Format de réponse invalide');
@@ -244,18 +219,12 @@ async function handlePost(request: Request) {
     // Mise en cache des résultats
     await cache.set(cacheKey, results);
 
-    logger.log('info', 'Recherche réussie', {
+    logger.log('info', '[API Route] MangaDex fallback search successful.', {
       query: sanitizedQuery,
-      resultsCount: results.length,
-      titles: results.map(r => r.title)
+      resultsCount: results.length
     });
 
     const mangaDexFallbackExecutionTime = Date.now() - mangaDexFallbackStartTime;
-    logger.log('info', '[API Route] MangaDex fallback search successful', {
-      query: sanitizedQuery,
-      resultsCount: results.length, // Assuming 'results' is the variable holding MangaDex results
-      executionTime: mangaDexFallbackExecutionTime
-    });
 
     return Response.json({
       success: true,

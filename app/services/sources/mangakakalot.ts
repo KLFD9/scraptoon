@@ -1,4 +1,4 @@
-import { Source, ChaptersResult, ChapterData, SourceSearchResultItem, SourceSearchParams } from '../../types/source'; // Added SourceSearchParams
+import { Source, ChaptersResult, ChapterData, SourceSearchResultItem, SourceSearchParams } from '../../types/source';
 import { logger } from '../../utils/logger';
 import { Cache } from '../../utils/cache';
 import { retry } from '../../utils/retry';
@@ -8,14 +8,14 @@ import * as cheerio from 'cheerio';
 const agent = new Agent({ keepAliveTimeout: 30000 });
 setGlobalDispatcher(agent);
 
-const BASE_URL = (process.env.MANGAKAKALOT_URL || 'https://mangakakalot.gg').replace(/\/$/, ''); // Corrected regex
+const BASE_URL = (process.env.MANGAKAKALOT_URL || 'https://mangakakalot.gg').replace(/\/$/, '');
 
 export interface MangakakalotSearchResultItem {
   id: string;
   title: string;
   url: string;
   cover: string;
-  sourceName: 'Mangakakalot'; // Align with new SourceSearchResultItem
+  sourceName: 'Mangakakalot';
 }
 
 // Cache for the list of results
@@ -52,22 +52,17 @@ export const mangakakalotSource: Source = {
 
     try {
       const searchUrl = `${BASE_URL}/search/story/${encodeURIComponent(sanitize(title))}`;
-      logger.log('debug', `Mangakakalot search URL: ${searchUrl}`, { query: title });
       const res = await secureFetch(searchUrl);
       const html = await res.text();
-      // Log the first 500 characters of the HTML to see if we get a valid page or an error/empty page
-      logger.log('debug', `Mangakakalot raw HTML (first 500 chars): ${html.substring(0, 500)}`, { query: title });
 
       // Check for Cloudflare interstitial page
       if (html.includes("Just a moment...") || html.includes("Verifying you are human") || html.includes("challenge-platform")) {
-        logger.log('warning', `Mangakakalot: Detected Cloudflare interstitial page for query: "${title}". Returning empty results.`, { query: title, htmlExcerpt: html.substring(0, 500) });
+        logger.log('warning', `Mangakakalot: Detected Cloudflare interstitial page for query: "${title}". Returning empty results.`, { query: title, htmlExcerpt: html.substring(0, 200) }); // Shortened excerpt
         return [];
       }
 
       const $ = cheerio.load(html);
       const items = $('.story_item').toArray();
-      // Log the number of items found by Cheerio selector
-      logger.log('debug', `Mangakakalot: Found ${items.length} items with selector '.story_item'`, { query: title });
 
       const results: MangakakalotSearchResultItem[] = [];
 
@@ -75,13 +70,9 @@ export const mangakakalotSource: Source = {
         const linkElement = $(el).find('.story_name a').first();
         const href = linkElement.attr('href') || '';
         const siteTitleRaw = linkElement.text().trim();
-        
-        // Log extracted data for each item
-        logger.log('debug', `Mangakakalot item processing: Title='${siteTitleRaw}', Href='${href}'`, { query: title });
 
-        const mangaIdMatch = href.match(/\/manga\/([^/?]+)/); // Corrected Regex
+        const mangaIdMatch = href.match(/\/manga\/([^/?]+)/);
         if (!mangaIdMatch || !mangaIdMatch[1]) {
-          logger.log('debug', `Mangakakalot search: Skipping item, no mangaId found. Title: ${siteTitleRaw}, Href: ${href}`, { query: title });
           continue;
         }
 
@@ -89,7 +80,6 @@ export const mangakakalotSource: Source = {
         const cover = coverElement.attr('src') || '';
         
         if (!siteTitleRaw || !href) {
-            logger.log('debug', `Mangakakalot search: Skipping item due to missing title or href. Title: ${siteTitleRaw}, Href: ${href}`, { query: title });
             continue;
         }
 
@@ -105,7 +95,10 @@ export const mangakakalotSource: Source = {
       if (results.length > 0) {
         logger.log('info', `Mangakakalot search successful. Found ${results.length} items for query: "${title}"`, { query: title, count: results.length });
       } else {
-        logger.log('info', `Mangakakalot: No items found for query: "${title}"`, { query: title });
+        // Avoid logging "No items found" if Cloudflare was detected, as that's expected.
+        if (!(html.includes("Just a moment...") || html.includes("Verifying you are human") || html.includes("challenge-platform"))) {
+           logger.log('info', `Mangakakalot: No items found for query: "${title}" after attempting to parse content.`, { query: title });
+        }
       }
       
       await searchCache.set(cacheKey, results);
@@ -120,6 +113,7 @@ export const mangakakalotSource: Source = {
       const pageUrl = url.startsWith('http') ? url : `${BASE_URL}/manga/${titleId}`;
       const res = await secureFetch(pageUrl);
       const html = await res.text();
+      // Consider adding Cloudflare check here too if chapter pages can be blocked
       const $ = cheerio.load(html);
       const chapters: ChapterData[] = [];
       const list = $('#chapterlist a, .chapter-list a').toArray();
@@ -145,7 +139,7 @@ export const mangakakalotSource: Source = {
         source: { name: 'mangakakalot', url: pageUrl, titleId }
       };
     } catch (err) {
-      logger.log('error', 'Mangakakalot chapters error', { error: err instanceof Error ? err.message : String(err) });
+      logger.log('error', 'Mangakakalot chapters error', { error: err instanceof Error ? err.message : String(err), titleId }); // Added titleId for context
       throw err;
     }
   }
