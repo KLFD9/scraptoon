@@ -83,6 +83,9 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - The `Strict-Transport-Security` header enforces HTTPS for two years across all subdomains.
 - MangaDex API requests automatically retry up to three times on network errors.
 - In-memory cache automatically prunes expired entries to limit memory usage.
+- Multi-source search aggregates MangaDex, Kitsu and Komga before falling back to scraping.
+- Chapters are fetched concurrently from MangaDex, Webtoons and Komga, returning the fastest result.
+- Source handlers live under `app/services/sources` for easier maintenance.
 - Cache writes are awaited and errors are logged for easier debugging.
  - Multi-source search aggregates MangaDex, Kitsu and Komga before falling back to scraping.
  - Chapters are fetched concurrently from MangaDex, Webtoons and Komga, returning the fastest result.

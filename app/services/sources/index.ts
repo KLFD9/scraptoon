@@ -1,5 +1,19 @@
 import { Source } from '@/app/types/source';
 import toomicsSource from './toomics';
+import webtoonSource from './webtoons';
+import komgaSource from './komga';
+import mangaScantradSource from './mangascantrad';
+import mangadexSource from './mangadex';
+
+export const sources: Record<string, Source> = {
+  toomics: toomicsSource,
+  webtoons: webtoonSource,
+  komga: komgaSource,
+  mangascantrad: mangaScantradSource,
+  mangadex: mangadexSource
+};
+
+export { toomicsSource, webtoonSource, komgaSource, mangaScantradSource, mangadexSource };
 import webtoonsSource from './webtoons';
 import komgaSource from './komga';
 import mangadexSource from './mangadex';

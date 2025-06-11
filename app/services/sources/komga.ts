@@ -5,6 +5,7 @@ import { retry } from '@/app/utils/retry';
 export const komgaSource: Source = {
   name: 'komga',
   baseUrl: process.env.KOMGA_URL || '',
+  search: async (title: string) => {
   async search(title: string) {
     try {
       if (!process.env.KOMGA_URL) {
@@ -27,6 +28,7 @@ export const komgaSource: Source = {
       return { titleId: null, url: null };
     }
   },
+  getChapters: async (titleId: string, url: string): Promise<ChaptersResult> => {
   async getChapters(titleId: string, url: string): Promise<ChaptersResult> {
     const komgaBaseUrl = process.env.KOMGA_URL;
     if (!komgaBaseUrl) {

@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { Cache } from '@/app/utils/cache';
 import { logger } from '@/app/utils/logger';
 import { retry } from '@/app/utils/retry';
+import type { MangaDexChapter, MangaDexChaptersResponse } from '@/app/types/mangadex';
+import type { Source, ChaptersResult, ChapterData, SourceSearchResult, SourceInfo } from '@/app/types/source';
+import { getAllSources } from '@/app/services/sources';
 import type { ChapterData, ChaptersResult, Source, SourceSearchResult, SourceInfo } from '@/app/types/source';
 import { mangadexSource, webtoonsSource, komgaSource, toomicsSource } from '@/app/services/sources';
 
@@ -9,6 +12,9 @@ interface ChaptersCacheData extends ChaptersResult {
   source: SourceInfo;
 }
 
+const chaptersCache = new Cache<ChaptersCacheData>(7200000);
+
+const sources: Source[] = getAllSources();
 const chaptersCache = new Cache<ChaptersCacheData>(7200000);
 
 const sources: Source[] = [
@@ -36,6 +42,13 @@ async function searchAllSources(mangaTitle: string): Promise<SourceSearchResult[
     }
   });
   const results = await Promise.all(searchPromises);
+  return results.filter((result): result is SourceSearchResult => result !== null);
+}
+
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
   return results.filter((r): r is SourceSearchResult => r !== null);
 }
 

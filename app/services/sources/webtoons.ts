@@ -24,6 +24,11 @@ async function getBrowser(): Promise<any> {
   return browserPromise;
 }
 
+
+export const webtoonSource: Source = {
+  name: 'webtoons',
+  baseUrl: 'https://www.webtoons.com',
+  search: async (title: string) => {
 export const webtoonsSource: Source = {
   name: 'webtoons',
   baseUrl: 'https://www.webtoons.com',
@@ -34,6 +39,7 @@ export const webtoonsSource: Source = {
       await page.setViewport({ width: 1920, height: 1080 });
       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
 
+      const searchUrl = `${webtoonSource.baseUrl}/fr/search?keyword=${encodeURIComponent(title)}`;
       const searchUrl = `${webtoonsSource.baseUrl}/fr/search?keyword=${encodeURIComponent(title)}`;
       logger.log('info', 'Recherche sur Webtoons', { query: title });
 
@@ -92,6 +98,8 @@ export const webtoonsSource: Source = {
       return { titleId: null, url: null };
     }
   },
+  
+  getChapters: async (titleId: string, url: string): Promise<ChaptersResult> => {
   async getChapters(titleId: string, url: string): Promise<ChaptersResult> {
     try {
       const browser = await getBrowser();
@@ -171,6 +179,7 @@ export const webtoonsSource: Source = {
         source: {
           name: 'webtoons',
           url: listUrl,
+          titleId: titleId
           titleId
         }
       };
@@ -184,4 +193,5 @@ export const webtoonsSource: Source = {
   }
 };
 
+export default webtoonSource;
 export default webtoonsSource;
