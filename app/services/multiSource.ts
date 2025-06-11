@@ -3,7 +3,7 @@ import { logger } from '../utils/logger';
 import { retry } from '../utils/retry';
 import type { Manga } from '../types/manga';
 import type { MangaDexSearchResponse, MangaDexManga, MangaDexRelationship, MangaDexTag } from '../types/mangadex';
-import { toomicsSource } from './sources';
+import { toomicsSource, mangakakalotSource } from './sources';
 import { launchBrowser } from '../utils/launchBrowser';
 
 interface KitsuMangaAttributes {
@@ -204,8 +204,39 @@ async function searchToomics(query: string): Promise<Manga[]> {
   }
 }
 
+async function searchMangakakalot(query: string): Promise<Manga[]> {
+  try {
+    const { titleId, url } = await mangakakalotSource.search(query);
+    if (!titleId || !url) return [];
+    return [{
+      id: `mangakakalot-${titleId}`,
+      mangadexId: undefined,
+      title: query,
+      description: '',
+      cover: '',
+      coverImage: '',
+      url: `/manga/mangakakalot-${titleId}`,
+      source: 'Mangakakalot',
+      genres: [],
+      author: 'N/A',
+      artist: 'N/A',
+      status: 'unknown',
+      year: undefined,
+      originalLanguage: undefined,
+      lastChapter: '?',
+      chapterCount: { french: 0, total: 0 },
+      type: 'manga',
+      contentRating: 'unknown'
+    } as unknown as Manga];
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger.log('error', 'Mangakakalot search failed', { error: errorMessage, query });
+    return [];
+  }
+}
+
 export async function searchMultiSource(query: string): Promise<Manga[]> {
-  const sources = [searchMangaDex, searchKitsu, searchKomga, searchToomics];
+  const sources = [searchMangaDex, searchKitsu, searchKomga, searchToomics, searchMangakakalot];
   const results: Manga[] = [];
   
   for (let i = 0; i < sources.length; i += concurrentSources) {
