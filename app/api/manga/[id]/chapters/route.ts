@@ -4,14 +4,14 @@ import { logger } from '@/app/utils/logger';
 import { retry } from '@/app/utils/retry';
 import type { MangaDexChapter, MangaDexChaptersResponse } from '@/app/types/mangadex';
 import type { Source, ChaptersResult, ChapterData, SourceSearchResult } from '@/app/types/source';
-import { getAllSources, mangadexSource, webtoonsSource, komgaSource, toomicsSource } from '@/app/services/sources';
+import { getAllSources, mangadexSource, webtoonSource, komgaSource, toomicsSource } from '@/app/services/sources';
 
 
 
 const chaptersCache = new Cache<ChaptersResult & { source: { name: string; url: string; titleId: string } }>(7200000);
 const sources: Source[] = [
   mangadexSource,
-  webtoonsSource,
+  webtoonSource,
   komgaSource,
   toomicsSource,
   // mangaScantradSource

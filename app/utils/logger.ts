@@ -73,6 +73,7 @@ export interface LogData {
     country: string;
     status: string;
   };
+  loading?: boolean; // Added loading property
   // Additional properties for better logging
   index?: number;
   chapterId?: string;

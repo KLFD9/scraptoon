@@ -10,6 +10,9 @@ import ClientOnly from './components/ClientOnly';
 import { scrapeManga } from './services/scraping.service';
 import { useFavorites } from './hooks/useFavorites';
 import ModernRecommendationsSection from './components/ModernRecommendationsSection';
+import NewestSection from './components/NewestSection';
+import TrendingSection from './components/TrendingSection';
+import ThematicCollectionsSection from './components/ThematicCollectionsSection';
 import { BookmarkPlus, BookOpen, Search, TrendingUp } from 'lucide-react';
 import { logger } from '@/app/utils/logger';
 import Link from 'next/link';
@@ -61,7 +64,7 @@ export default function Home() {
   return (
     <Layout>
       <ClientOnly>
-        <div className="min-h-screen bg-gray-950">
+        <div className="min-h-screen bg-gray-950 text-gray-100">
           {/* Header */}
           <header className="sticky top-0 z-50 bg-gray-950/95 backdrop-blur-sm border-b border-gray-800">
             <div className="max-w-7xl mx-auto px-4 py-4">
@@ -116,12 +119,12 @@ export default function Home() {
             </div>
           </header>
 
-          {/* Welcome Section */}
-          {results.length === 0 && !loading && (
-            <div className="px-4 pt-6 sm:pt-8 pb-8 sm:pb-12">
-              <div className="max-w-7xl mx-auto">
+          {/* Welcome Section & Main Content Area */}
+          <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8 space-y-12 sm:space-y-16">
+            {results.length === 0 && !loading && (
+              <>
                 {/* Hero compact */}
-                <div className="text-center mb-8">
+                <div className="text-center mb-8 sm:mb-12">
                   <div className="flex items-center justify-center gap-2 mb-3">
                     <Search className="w-5 h-5 text-gray-400" />
                     <h2 className="text-lg sm:text-xl font-semibold text-white">
@@ -131,15 +134,22 @@ export default function Home() {
                   <p className="text-gray-400 text-sm sm:text-base max-w-md mx-auto">
                     Explorez des milliers de titres et reprenez votre lecture où vous l'avez laissée
                   </p>
-                </div>                {/* Continue Reading */}
+                </div>
+
+                {/* Continue Reading */}
                 <ContinueReading />
+                
+                {/* New Sections */}
+                <NewestSection onSearch={handleSearch} />
+                <TrendingSection onSearch={handleSearch} />
+                <ThematicCollectionsSection onSearch={handleSearch} />
                 
                 {/* Modern Recommendations Section */}
                 <ModernRecommendationsSection onSearch={handleSearch} />
                 
                 {/* Recherches récentes */}
                 {searchHistory.length > 0 && (
-                  <div className="text-center">
+                  <div className="text-center pt-4">
                     <div className="flex items-center justify-center gap-2 mb-4">
                       <TrendingUp className="w-4 h-4 text-gray-500" />
                       <h3 className="text-sm font-medium text-gray-400 uppercase tracking-wide">
@@ -159,14 +169,12 @@ export default function Home() {
                     </div>
                   </div>
                 )}
-              </div>
-            </div>
-          )}
+              </>
+            )}
 
-          {/* Main Content */}
-          <main className="px-3 sm:px-4 pb-6 sm:pb-8">
+            {/* Search Results */}
             {results.length > 0 && (
-              <div className="max-w-7xl mx-auto">
+              <div>
                 <div className="mb-4 sm:mb-6">
                   <h2 className="text-xl sm:text-2xl font-semibold text-white mb-1 sm:mb-2">
                     Résultats de recherche
@@ -178,7 +186,7 @@ export default function Home() {
                 <MangaResults mangas={results} />
               </div>
             )}
-          </main>
+          </div>
         </div>
       </ClientOnly>
     </Layout>

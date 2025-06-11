@@ -173,9 +173,9 @@ export async function GET(
       description: formattedDescription,
       cover: coverFileName ? `https://uploads.mangadex.org/covers/${manga.id}/${coverFileName}` : null,
       author,
-      year: attributes.year,
-      status: attributes.status,
-      type: attributes.originalLanguage,
+      year: attributes.year ? Number(attributes.year) : undefined,
+      status: attributes.status || 'unknown',
+      type: attributes.originalLanguage || 'unknown',
       isAvailableInFrench: frenchChapters > 0,
       chapterCount: {
         total: totalChapters,
@@ -183,21 +183,22 @@ export async function GET(
       },
       genres,
       availableLanguages: attributes.availableTranslatedLanguages,
-      lastChapter: chaptersData.data && chaptersData.data.length > 0
+      lastChapter: (chaptersData.data && chaptersData.data.length > 0
         ? chaptersData.data[0].attributes.chapter
-        : null,
+        : null) || null,
       videoUrl
     };
     await mangaCache.set(mangaId, formattedManga);
     return NextResponse.json(formattedManga);
   } catch (error) {
+    const { id: mangaIdFromParams } = params; // Destructure with a different name to avoid conflict if 'mangaId' is used in a complex way above
     logger.log('error', 'failed to fetch manga details', {
       error: String(error),
-      mangaId
+      mangaId: mangaIdFromParams // Use the destructured 'mangaIdFromParams'
     });
     return NextResponse.json(
       { error: 'Erreur lors de la récupération des détails du manga' },
       { status: 500 }
     );
   }
-} 
+}
