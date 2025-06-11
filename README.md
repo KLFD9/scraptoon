@@ -105,6 +105,16 @@ and relies on the `pageCount`/`pages` values returned by the API.
 Use the `useRecommendations` hook to display manga suggestions. The
 `reading_history` cookie tracks your last 20 mangas and is sent to the API for
 personalized results. Recommendations are cached in `localStorage` for one hour.
+The `POST /api/recommendations` endpoint responds with:
+
+```json
+{
+  "success": true,
+  "results": [],
+  "cached": false
+}
+```
+so the hook can reliably parse the results.
 
 ## Project Setup
 
