@@ -4,7 +4,7 @@ import { Sparkles, TrendingUp, Zap, Star, Globe, Heart, Crown, Target, BookOpen,
 import TrendingSection from './TrendingSection';
 import BestSellersSection from './BestSellersSection';
 import NewestSection from './NewestSection';
-import RecommendationsSection from './RecommendationsSection';
+import ModernRecommendationsSection from './ModernRecommendationsSection';
 import ThematicCollectionsSection from './ThematicCollectionsSection';
 import GenreCard from './GenreCard';
 
@@ -87,7 +87,7 @@ export default function SimpleDiscovery({ onSearch }: SimpleDiscoveryProps) {
       <div className="relative">
         <div className="absolute -inset-1 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-2xl blur-xl"></div>
         <div className="relative bg-gray-900/50 backdrop-blur-sm rounded-xl p-5 border border-gray-700/30">
-          <RecommendationsSection onSearch={onSearch} />
+          <ModernRecommendationsSection onSearch={onSearch} />
         </div>
       </div>      {/* Thematic Collections Section - Collections thématiques */}
       <div className="relative">
