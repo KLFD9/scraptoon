@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useFavorites } from './useFavorites';
 import type { Manga } from '../types/manga';
+import { logger } from '../utils/logger';
 
 const CACHE_KEY = 'user_recommendations';
 const CACHE_EXPIRY = `${CACHE_KEY}_expiry`;
@@ -27,7 +28,9 @@ export function useRecommendations(limit: number = 6) {
         const cachedData = JSON.parse(cached) as Manga[];
         setRecommendations(cachedData);
         setLoading(false);
-        console.log('✅ Recommendations chargées depuis le cache personnalisé:', cachedData.length);
+        logger.log('info', 'recommendations loaded from cache', {
+          count: cachedData.length
+        });
         return;
       }
 
@@ -42,7 +45,7 @@ export function useRecommendations(limit: number = 6) {
         }
       });
 
-      console.log('🔄 Récupération des recommandations depuis l\'API...');
+      logger.log('info', 'fetching recommendations from API');
 
       // Essayer l'API principale en premier
       let resp = await fetch('/api/recommendations', {
@@ -72,7 +75,7 @@ export function useRecommendations(limit: number = 6) {
 
       // Si l'API principale échoue, utiliser l'API mock
       if (!resp.ok) {
-        console.log('⚠️ API principale échouée, tentative avec l\'API mock...');
+        logger.log('warning', 'main API failed, trying mock API');
         resp = await fetch('/api/recommendations/mock', {
           method: 'POST',
           headers: {
@@ -87,7 +90,8 @@ export function useRecommendations(limit: number = 6) {
       }
 
       const data = await resp.json();
-      console.log('📄 Réponse API:', data);      if (data.success && Array.isArray(data.results)) {
+      logger.log('info', 'API response received');
+      if (data.success && Array.isArray(data.results)) {
         setRecommendations(data.results);
         // Utiliser la clé de cache personnalisée
         const favoritesKey = favorites.map(f => f.id).sort().join('_');
@@ -99,12 +103,16 @@ export function useRecommendations(limit: number = 6) {
           CACHE_EXPIRY_WITH_FAVORITES,
           (Date.now() + 60 * 60 * 1000).toString()
         );
-        console.log('✅ Recommendations chargées:', data.results.length, 'items');
+        logger.log('info', 'recommendations loaded from API', {
+          count: data.results.length
+        });
       } else {
         throw new Error(data.error || 'API error - invalid response format');
       }
     } catch (err) {
-      console.error('❌ Erreur lors du chargement des recommandations:', err);
+      logger.log('error', 'recommendations fetch error', {
+        error: String(err)
+      });
       setError(err instanceof Error ? err.message : 'Erreur inconnue');
       
       // En cas d'erreur totale, essayer de charger des données de base
@@ -134,9 +142,11 @@ export function useRecommendations(limit: number = 6) {
           }
         ];
         setRecommendations(basicRecommendations.slice(0, limit));
-        console.log('⚡ Données de base chargées en fallback');
+        logger.log('info', 'basic data loaded as fallback');
       } catch (basicErr) {
-        console.error('❌ Impossible de charger même les données de base:', basicErr);
+        logger.log('error', 'failed to load even basic data', {
+          error: String(basicErr)
+        });
       }
     } finally {
       setLoading(false);
@@ -150,7 +160,7 @@ export function useRecommendations(limit: number = 6) {
         localStorage.removeItem(key);
       }
     });
-    console.log('🗑️ Cache des recommandations vidé pour refresh');
+    logger.log('info', 'recommendations cache cleared for refresh');
     fetchRecommendations();
   }, [fetchRecommendations]);
 

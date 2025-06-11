@@ -48,6 +48,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Asynchronous API routes with proper parameter handling.
 - Timestamped error logs for easier debugging.
 - Consistent `logger.log('error')` calls replace `console.error` for structured logging.
+- `console.log` and `console.warn` are replaced with `logger.log` for unified structured logs.
 - Unified API response with `pageCount` and `pages` array.
 - Stronger type safety with explicit interfaces replacing `any`.
 - Extended MangaDex type definitions for `lastChapter` and `contentRating`.
@@ -85,7 +86,11 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Multi-source search aggregates MangaDex, Kitsu and Komga before falling back to scraping.
 - Chapters are fetched concurrently from MangaDex, Webtoons and Komga, returning the fastest result.
 - Source handlers live under `app/services/sources` for easier maintenance.
+- Cache writes are awaited and errors are logged for easier debugging.
+ - Multi-source search aggregates MangaDex, Kitsu and Komga before falling back to scraping.
+ - Chapters are fetched concurrently from MangaDex, Webtoons and Komga, returning the fastest result.
 - Connection pooling via `undici` enables HTTP/2 requests with configurable concurrency.
+- Source handlers are modularized under `app/services/sources` for easier maintenance.
 - Request queue ensures a controlled number of concurrent scraping jobs with configurable backoff.
 
 
@@ -162,6 +167,7 @@ node test-reading-logic.js
 multiple languages.
 `test-reading-logic.js` ensures the reading order is correct even when chapters
 are unsorted.
+To experiment with chapter navigation in the browser, run `public/test-language-navigation-browser.js` from the developer console on a chapter page.
 
 ## Contributing
 

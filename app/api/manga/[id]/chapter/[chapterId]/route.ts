@@ -43,9 +43,10 @@ async function getMangaDexChapterImages(
       RETRY_DELAY,
     );
     if (!res.ok) {
-      console.log(
-        `${new Date().toISOString()} ⚠️ MangaDex at-home failed: ${res.status}`,
-      );
+      logger.log('warning', 'MangaDex at-home failed', {
+        status: res.status,
+        chapterId
+      });
       return [];
     }
     const data = await res.json();
@@ -217,7 +218,7 @@ async function performLazyLoad(
   lazyConfig?: ScrapingConfig['selectors']['lazyLoad']
 ): Promise<void> {
   if (!lazyConfig) {
-    console.log('⚠️ Aucune configuration de lazy load fournie');
+    logger.log('warning', 'no lazy load configuration provided');
     return Promise.resolve();
   }
   
@@ -261,15 +262,15 @@ async function scrapeImagesRobust(
   config: ScrapingConfig
 ): Promise<string[]> {
   const images = new Map<string, number>();
-  console.log(`📝 Début du scraping robuste avec la configuration ${config.name}`);
+  logger.log('info', 'robust scraping started', { config: config.name });
 
   try {
     // Attendre le chargement initial avec timeout réduit
     try {
       await page.waitForSelector('img, canvas, [style*="background-image"]', { timeout: 10000 });
-      console.log('✅ Page chargée, éléments visuels détectés');
+      logger.log('info', 'page loaded, visual elements detected');
     } catch {
-      console.log('⚠️ Timeout sur les éléments visuels, continuation...');
+      logger.log('warning', 'timeout on visual elements, continuing');
       return [];
     }
 
@@ -295,7 +296,7 @@ async function scrapeImagesRobust(
 
     if (config.name === 'webtoons') {
       // Méthode spécifique pour Webtoons
-      console.log('🔄 Scraping des images Webtoons');
+      logger.log('info', 'scraping webtoons images');
 
       // Attendre que les images soient chargées
       await page.waitForSelector('img[data-url]', { timeout: 10000 });
@@ -314,7 +315,7 @@ async function scrapeImagesRobust(
 
     } else {
       // Méthode générique pour les autres sites
-      console.log('🔄 Scroll progressif');
+      logger.log('info', 'progressive scroll started');
       await performLazyLoad(page, config.selectors.lazyLoad);
 
       const currentUrls = await page.evaluate((selectors: string[]) => {
@@ -338,10 +339,10 @@ async function scrapeImagesRobust(
         }
       });
 
-      console.log(`📊 Images récupérées: ${images.size}`);
+      logger.log('info', 'images collected', { count: images.size });
 
       // Scroll progressif pour charger le contenu lazy
-      console.log('🔄 Scroll pour charger le contenu...');
+      logger.log('info', 'scrolling to load content');
       const scrollSteps = config.selectors.lazyLoad?.maxScrolls || 20;
       const stepSize = config.selectors.lazyLoad?.scrollStep || 500;
 
@@ -362,7 +363,11 @@ async function scrapeImagesRobust(
         );
         
         if (i % 5 === 0) {
-          console.log(`📸 Scroll ${i}/${scrollSteps}: ${currentImageCount} images détectées`);
+          logger.log('info', 'scroll progress', {
+            step: i,
+            total: scrollSteps,
+            images: currentImageCount
+          });
         }
       }
 
@@ -396,10 +401,16 @@ async function scrapeImagesRobust(
           });
 
           if (imgSrcs.length > 0) {
-            console.log(`✅ ${imgSrcs.length} images trouvées avec ${selector}`);
+            logger.log('info', 'images found with selector', {
+              selector,
+              count: imgSrcs.length
+            });
           }
         } catch (error) {
-          console.log(`⚠️ Erreur avec le sélecteur ${selector}: ${error}`);
+          logger.log('warning', 'selector error', {
+            selector,
+            error: String(error)
+          });
         }
       }
       
@@ -407,7 +418,7 @@ async function scrapeImagesRobust(
     
     // Si on arrive ici, on a terminé le traitement
     if (images.size === 0) {
-      console.log('⚠️ Aucune image trouvée avec les sélecteurs standards');
+      logger.log('warning', 'no images found with standard selectors');
       return [];
     }
     
@@ -433,11 +444,11 @@ async function handleGet(
     // Vérifier le cache
     const cached = await cache.get(cacheKey);
     if (cached) {
-      console.log('📦 Données du chapitre récupérées du cache');
+      logger.log('info', 'chapter data retrieved from cache', { chapterId, mangaId });
       return NextResponse.json(cached);
     }
 
-    console.log(`🔍 Lecture du chapitre ${chapterId}`);
+    logger.log('info', 'reading chapter', { chapterId });
 
     // Récupérer les infos du manga depuis l'API MangaDex
     const mangaResponse = await retry(
@@ -473,7 +484,9 @@ async function handleGet(
     const chapterData = await chapterResponse.json();
     const chapter = chapterData.data;
     
-    console.log(`📚 Langue du chapitre: ${chapter.attributes.translatedLanguage}`);
+    logger.log('info', 'chapter language detected', {
+      language: chapter.attributes.translatedLanguage
+    });
 
     const language = chapter.attributes.translatedLanguage;
     const configs = SCRAPING_CONFIGS[language] || SCRAPING_CONFIGS['en'];
@@ -482,7 +495,9 @@ async function handleGet(
     let successfulConfig: string | null = images.length > 0 ? 'mangadex-direct' : null;
 
     if (images.length > 0) {
-      console.log(`✅ ${images.length} images récupérées via MangaDex`);
+      logger.log('info', 'images retrieved via MangaDex', {
+        count: images.length
+      });
     }
 
     // Obtenir le titre en slug format
@@ -495,7 +510,10 @@ async function handleGet(
       for (const config of configs) {
         try {
           const url = config.urlPattern(slug, chapterNumber, manga.attributes.title.en);
-          console.log(`🌐 Fallback avec ${config.name}: ${url}`);
+          logger.log('info', 'fallback attempt', {
+            config: config.name,
+            url
+          });
 
           const browser = await getBrowser();
           const page = await browser.newPage();
@@ -512,23 +530,27 @@ async function handleGet(
 
             if (images.length > 0) {
               successfulConfig = config.name;
-              console.log(
-                `✅ ${images.length} images récupérées avec ${config.name}`,
-              );
+              logger.log('info', 'images retrieved with config', {
+                config: config.name,
+                count: images.length
+              });
               break;
             }
           } finally {
             await page.close();
           }
         } catch (error) {
-          console.log(`❌ Erreur avec ${config.name}: ${error}`);
+          logger.log('warning', 'scraping config error', {
+            config: config.name,
+            error: String(error)
+          });
         }
       }
     }
 
     // Fallback avec images de démonstration si aucune image trouvée
     if (images.length === 0) {
-      console.log('⚠️ Aucune image trouvée, utilisation d\'images de démonstration');
+      logger.log('warning', 'no images found, using demo images');
       // Utiliser des images SVG générées directement pour éviter les problèmes de CORS
       const generateDemoImage = (pageNum: number) => {
         const svgContent = `
@@ -566,7 +588,7 @@ async function handleGet(
       }
     } catch (error) {
       // Ignorer les erreurs de récupération de la couverture
-      console.log('⚠️ Impossible de récupérer la couverture du manga');
+      logger.log('warning', 'unable to retrieve manga cover');
     }
 
     const result: ChapterResult = {
@@ -588,9 +610,19 @@ async function handleGet(
     };
 
     // Mettre en cache pour 1 heure
-    cache.set(cacheKey, result);
+    try {
+      await cache.set(cacheKey, result);
+    } catch (error) {
+      logger.log('error', 'chapter cache set error', {
+        error: String(error),
+        cacheKey,
+      });
+    }
 
-    console.log(`✅ Scraping terminé: ${images.length} images trouvées`);
+    logger.log('info', 'scraping finished', {
+      images: images.length,
+      chapterId
+    });
     return NextResponse.json(result);
   } catch (error) {
     logger.log('error', 'chapter retrieval error', {
