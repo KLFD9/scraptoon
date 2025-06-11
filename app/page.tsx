@@ -119,34 +119,30 @@ export default function Home() {
             </div>
           </header>
 
-          {/* Welcome Section & Main Content Area */}
-          <div className="max-w-7xl mx-auto px-4 py-6 sm:py-8 space-y-12 sm:space-y-16">
-            {results.length === 0 && !loading && (
+          {/* Search Bar - Mobile (appears below header on small screens) */}
+          <div className="md:hidden p-4 border-b border-gray-800">
+            <SearchBar 
+              onSearch={handleSearch} 
+              loading={loading}
+              searchHistory={searchHistory}
+              onClearHistory={clearHistory}
+            />
+          </div>
+          
+          <main className="max-w-7xl mx-auto px-4 py-8 space-y-12">
+            {results.length > 0 ? (
+              <MangaResults mangas={results} />
+            ) : (
               <>
-                {/* Hero compact */}
-                <div className="text-center mb-8 sm:mb-12">
-                  <div className="flex items-center justify-center gap-2 mb-3">
-                    <Search className="w-5 h-5 text-gray-400" />
-                    <h2 className="text-lg sm:text-xl font-semibold text-white">
-                      Rechercher un manga
-                    </h2>
-                  </div>
-                  <p className="text-gray-400 text-sm sm:text-base max-w-md mx-auto">
-                    Explorez des milliers de titres et reprenez votre lecture où vous l'avez laissée
-                  </p>
-                </div>
-
-                {/* Continue Reading - priorité pour la reprise de lecture */}
                 <ContinueReading />
-                
-                {/* Nouveautés - découverte de nouveaux titres */}
+                <ModernRecommendationsSection onSearch={handleSearch} />
                 <NewestSection onSearch={handleSearch} />
                 
                 {/* Best-sellers - contenus populaires et de qualité */}
                 <BestSellersSection onSearch={handleSearch} />
                 
                 {/* Recommendations personnalisées basées sur les favoris */}
-                <ModernRecommendationsSection onSearch={handleSearch} />
+                {/* <ModernRecommendationsSection onSearch={handleSearch} /> */}
                 
                 {/* Collections thématiques pour la découverte par genre */}
                 <ThematicCollectionsSection onSearch={handleSearch} />
@@ -175,22 +171,7 @@ export default function Home() {
                 )}
               </>
             )}
-
-            {/* Search Results */}
-            {results.length > 0 && (
-              <div>
-                <div className="mb-4 sm:mb-6">
-                  <h2 className="text-xl sm:text-2xl font-semibold text-white mb-1 sm:mb-2">
-                    Résultats de recherche
-                  </h2>
-                  <p className="text-gray-400 text-sm sm:text-base">
-                    {results.length} manga{results.length > 1 ? 's' : ''} trouvé{results.length > 1 ? 's' : ''}
-                  </p>
-                </div>
-                <MangaResults mangas={results} />
-              </div>
-            )}
-          </div>
+          </main>
 
           {/* Footer */}
           <footer className="bg-gray-950 border-t border-gray-800">

@@ -1,9 +1,9 @@
-import { Source } from '@/app/types/source';
+import mangaScantradSource from './mangascantrad'; // Corrected casingt { Source } from '@/app/types/source';
 import toomicsSource from './toomics';
 import webtoonSource from './webtoons';
 import komgaSource from './komga';
-import mangaScantradSource from './mangaScantrad'; // Corrected casing
 import mangadexSource from './mangadex';
+import { Source } from '@/app/types/source';
 
 export const sources: Record<string, Source> = {
   toomics: toomicsSource,

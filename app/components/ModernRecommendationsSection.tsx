@@ -7,6 +7,7 @@ import { useFavorites } from '../hooks/useFavorites';
 import { useRecommendations } from '../hooks/useRecommendations';
 import { Manga } from '../types/manga';
 import { logger } from '../utils/logger';
+import ErrorMessage from './ErrorMessage';
 
 interface ModernRecommendationsSectionProps {
   onSearch: (query: string) => void;
@@ -50,14 +51,12 @@ export default function ModernRecommendationsSection({ onSearch }: ModernRecomme
     return null; // Or a minimal skeleton loader
   }
   
-  if (loading) {
+  if (loading && recommendations.length === 0) {
     return (
-      <section className="py-8">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="p-1.5 bg-violet-500/10 rounded-lg">
-            <Sparkles className="w-5 h-5 text-violet-400" />
-          </div>
-          <h2 className="text-lg font-semibold text-white">
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Sparkles className="w-6 h-6 text-purple-400" />
+          <h2 className="text-xl font-semibold text-white">
             Recommendations pour vous
           </h2>
         </div>
@@ -70,51 +69,37 @@ export default function ModernRecommendationsSection({ onSearch }: ModernRecomme
             </div>
           ))}
         </div>
-      </section>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <section className="py-8">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="p-1.5 bg-red-500/10 rounded-lg">
-            <Info className="w-5 h-5 text-red-400" />
-          </div>
-          <h2 className="text-lg font-semibold text-white">
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Sparkles className="w-6 h-6 text-purple-400" />
+          {/* <h2 className="text-xl font-semibold text-white">
             Recommendations pour vous
-          </h2>
+          </h2> */}
         </div>
-        <div className="bg-gray-800/50 border border-red-500/30 rounded-lg p-6 text-center">
-          <p className="text-sm text-red-400 mb-2">
-            Oops! Impossible de charger les recommandations.
-          </p>
-          <p className="text-xs text-gray-500 mb-4">
-            {error}
-          </p>
-          <button 
-            onClick={refetch}
-            className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors"
-          >
-            Réessayer
-          </button>
-        </div>
-      </section>
+        <ErrorMessage 
+          message="Oops! Impossible de charger les recommandations."
+          onRetry={refetch}
+        />
+      </div>
     );
   }
 
-  if (!recommendations.length) {
+  if (recommendations.length === 0) {
     return (
-      <section className="py-8">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="p-1.5 bg-sky-500/10 rounded-lg">
-            <Target className="w-5 h-5 text-sky-400" />
-          </div>
-          <h2 className="text-lg font-semibold text-white">
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Sparkles className="w-6 h-6 text-purple-400" />
+          {/* <h2 className="text-xl font-semibold text-white">
             Recommendations pour vous
-          </h2>
+          </h2> */}
         </div>
-        <div className="bg-gray-800/50 border border-sky-500/30 rounded-lg p-6 text-center">
+        <div className="bg-gray-800/50 p-8 rounded-xl text-center shadow-lg">
           <p className="text-sm text-sky-400 mb-2">
             Pas encore de recommandations personnalisées.
           </p>
@@ -122,26 +107,25 @@ export default function ModernRecommendationsSection({ onSearch }: ModernRecomme
             Ajoutez des mangas à vos favoris pour que nous puissions vous suggérer des titres que vous pourriez aimer.
           </p>
         </div>
-      </section>
+      </div>
     );
   }
 
   return (
-    <section className="py-8">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-violet-500/10 rounded-lg">
-            <Sparkles className="w-5 h-5 text-violet-400" />
-          </div>
-          <h2 className="text-lg font-semibold text-white">
+    <section className="space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Sparkles className="w-6 h-6 text-purple-400" />
+          {/* <h2 className="text-xl font-semibold text-white">
             Recommendations pour vous
-          </h2>
+          </h2> */}
         </div>
-        {favorites.length > 0 && (
-          <span className="text-xs text-gray-500 bg-gray-800 px-2 py-1 rounded-full">
-            Basé sur vos <strong className="text-violet-400">{favorites.length}</strong> favoris
-          </span>
-        )}
+        <button 
+          onClick={refetch}
+          className="px-4 py-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-lg transition-colors"
+        >
+          Réessayer
+        </button>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-x-4 gap-y-6">
