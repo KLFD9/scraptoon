@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Manga } from '@/app/types/manga';
 
 interface ReadingProgress {
@@ -35,7 +35,7 @@ export function useReadingProgress() {
     }
   }, []);
 
-  const updateReadingProgress = (
+  const updateReadingProgress = useCallback((
     mangaId: string,
     chapterId: string,
     chapterNumber: string,
@@ -65,9 +65,9 @@ export function useReadingProgress() {
       
       return updated;
     });
-  };
+  }, []); // Empty dependency array for useCallback, as it doesn't depend on props or state from this hook's scope directly
 
-  const removeFromReadingProgress = (mangaId: string) => {
+  const removeFromReadingProgress = useCallback((mangaId: string) => {
     setReadingProgress(prev => {
       const updated = prev.filter(item => item.mangaId !== mangaId);
       
@@ -77,14 +77,14 @@ export function useReadingProgress() {
       
       return updated;
     });
-  };
+  }, []); // Empty dependency array
 
-  const clearReadingProgress = () => {
+  const clearReadingProgress = useCallback(() => {
     setReadingProgress([]);
     if (typeof window !== 'undefined') {
       localStorage.removeItem('readingProgress');
     }
-  };
+  }, []); // Empty dependency array
 
   return {
     readingProgress,

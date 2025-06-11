@@ -6,6 +6,7 @@ import { useEffect, useState, useRef } from 'react';
 import { retry } from '@/app/utils/retry';
 import { ArrowLeft, ChevronLeft, ChevronRight, List, Settings } from 'lucide-react';
 import ChapterReader from '@/app/components/ChapterReader';
+import ChapterPageSkeleton from '@/app/components/ChapterPageSkeleton'; // Import the skeleton component
 import { useChapterNavigation, Chapter as NavChapter } from '@/app/hooks/useChapterNavigation';
 import { useReadingProgress } from '@/app/hooks/useReadingProgress';
 import { logger } from '@/app/utils/logger';
@@ -69,82 +70,101 @@ function ChapterReaderContent() {
     const fetchChapterData = async () => {
       try {
         setError(null);
-        setLoading(true);
+        setLoading(true); // Ensure loading is true at the start
 
         if (!mangaId || !chapterId) {
           throw new Error('ID du manga ou du chapitre manquant');
         }
 
-        // Récupérer la liste des chapitres pour la navigation (récupérer tous les chapitres)
-        const chaptersResponse = await retry(() => fetch(`/api/manga/${mangaId}/chapters?all=true`), 3, 500);
-        if (chaptersResponse.ok) {
-          const chaptersData = await chaptersResponse.json();
-          if (chaptersData.chapters) {
-            // S'assurer que les chapitres incluent les champs nécessaires pour la navigation
-            const chaptersWithLanguage = chaptersData.chapters.map((ch: any) => ({
-              id: ch.id,
-              title: ch.title,
-              language: ch.language,
-              chapter: ch.chapter
-            }));
-            setAllChapters(chaptersWithLanguage);
+        // Helper function to fetch and parse JSON with content type check
+        const fetchAndParseJson = async (url: string, resourceName: string) => {
+          const response = await retry(() => fetch(url), 3, 500);
+          const contentType = response.headers.get('content-type');
+
+          if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            if (!response.ok) {
+              // Attempt to parse error from JSON if possible, otherwise use a generic message
+              const errorDetail = data?.error || data?.message || `Erreur lors du chargement de ${resourceName}`;
+              throw new Error(errorDetail);
+            }
+            return data;
+          } else {
+            const textResponse = await response.text(); // Get text for logging
+            const logMessage = `Invalid content type received for ${resourceName}. URL: ${url}, Content-Type: ${contentType}, Status: ${response.status}. Response Snippet: ${textResponse.substring(0, 200)}`;
+            logger.log('error', logMessage); // Removed third argument
+            throw new Error(`Réponse inattendue du serveur (${response.status}) pour ${resourceName}. Attendu JSON, reçu ${contentType}.`);
           }
+        };
+
+        // Récupérer la liste des chapitres pour la navigation
+        const chaptersData = await fetchAndParseJson(`/api/manga/${mangaId}/chapters?all=true`, 'liste des chapitres');
+        if (chaptersData && chaptersData.chapters) {
+          const chaptersWithLanguage = chaptersData.chapters.map((ch: any) => ({
+            id: ch.id,
+            title: ch.title,
+            language: ch.language,
+            chapter: ch.chapter
+          }));
+          setAllChapters(chaptersWithLanguage);
         }
 
         // Récupérer les données du chapitre
-        const response = await retry(() => fetch(`/api/manga/${mangaId}/chapter/${chapterId}`), 3, 500);
-        const data = await response.json();
+        const chapterDetailsData = await fetchAndParseJson(`/api/manga/${mangaId}/chapter/${chapterId}`, 'détails du chapitre');
 
-        if (!response.ok) {
-          throw new Error(data.error || 'Erreur lors du chargement du chapitre');
-        }
-
-        const pagesArray = Array.isArray(data.pages)
-          ? data.pages
-          : Array.isArray(data.images)
-          ? data.images
+        const pagesArray = Array.isArray(chapterDetailsData.pages)
+          ? chapterDetailsData.pages
+          : Array.isArray(chapterDetailsData.images)
+          ? chapterDetailsData.images
           : null;
 
-        if (!data || !pagesArray) {
+        if (!chapterDetailsData || !pagesArray) {
           throw new Error('Données du chapitre invalides');
         }
 
         setChapterData({
-          ...data,
+          ...chapterDetailsData,
           pages: pagesArray,
-          pageCount: data.pageCount ?? pagesArray.length,
+          pageCount: chapterDetailsData.pageCount ?? pagesArray.length,
         });
 
         // Mettre à jour la progression de lecture
-        if (data.mangaTitle && data.chapter) {
-          // Si la couverture n'est pas disponible dans l'API chapitre, essayer de la récupérer depuis l'API manga
-          let coverUrl = data.mangaCover;
+        if (chapterDetailsData.mangaTitle && chapterDetailsData.chapter) {
+          let coverUrl = chapterDetailsData.mangaCover;
           if (!coverUrl) {
             try {
-              const mangaResponse = await fetch(`/api/manga/${mangaId}`);
-              if (mangaResponse.ok) {
-                const mangaData = await mangaResponse.json();
-                coverUrl = mangaData.cover;
+              // This fetch is a fallback, less critical if it fails or returns non-JSON for some reason
+              const mangaDetailsResponse = await retry(() => fetch(`/api/manga/${mangaId}`), 3, 500);
+              if (mangaDetailsResponse.ok) {
+                const mangaDetailsContentType = mangaDetailsResponse.headers.get('content-type');
+                if (mangaDetailsContentType && mangaDetailsContentType.includes('application/json')) {
+                  const mangaData = await mangaDetailsResponse.json();
+                  coverUrl = mangaData.cover;
+                } else {
+                  logger.log('warning', 'Manga details for cover fallback did not return JSON', { mangaId });
+                }
               }
             } catch (error) {
-              // Ignorer silencieusement les erreurs de récupération de couverture
+              logger.log('warning', 'Failed to fetch manga details for cover fallback', { mangaId, error: String(error) });
             }
           }
 
           updateReadingProgress(
             mangaId,
             chapterId,
-            data.chapter,
-            data.mangaTitle,
+            chapterDetailsData.chapter,
+            chapterDetailsData.mangaTitle,
             coverUrl,
-            data.language
+            chapterDetailsData.language
           );
           updateHistoryCookie(mangaId);
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Une erreur est survenue';
-        logger.log('error', message, { mangaId, chapterId });
-        setError(message);
+        // Simplify logging to avoid LogData issues, include IDs in the message string itself
+        const detailedMessage = `Error fetching chapter data for mangaId: ${mangaId}, chapterId: ${chapterId}. Error: ${message}`;
+        logger.log('error', detailedMessage);
+        setError(detailedMessage); // Set the more detailed message in error state as well
         setChapterData(null);
       } finally {
         setLoading(false);
@@ -154,7 +174,7 @@ function ChapterReaderContent() {
     if (mangaId && chapterId) {
       fetchChapterData();
     }
-  }, [mangaId, chapterId]);
+  }, [mangaId, chapterId, updateReadingProgress]); // Added updateReadingProgress to dependency array
 
   // Gérer l'affichage/masquage de l'en-tête au scroll
   useEffect(() => {
@@ -205,14 +225,7 @@ function ChapterReaderContent() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white">Chargement du chapitre...</p>
-        </div>
-      </div>
-    );
+    return <ChapterPageSkeleton />;
   }
 
   if (error) {
@@ -360,14 +373,7 @@ function ChapterReaderContent() {
 
 export default function ChapterReaderPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white">Chargement du chapitre...</p>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={<ChapterPageSkeleton />}>
       <ChapterReaderContent />
     </Suspense>
   );

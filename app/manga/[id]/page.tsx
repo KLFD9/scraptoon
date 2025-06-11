@@ -11,6 +11,7 @@ import { useReadingProgress } from '@/app/hooks/useReadingProgress';
 import Layout from '@/app/components/Layout';
 import { extractShortSynopsis } from '@/app/components/SynopsisContent';
 import ChaptersList from '@/app/components/ChaptersList';
+import ChapterListSkeleton from '@/app/components/ChapterListSkeleton'; // Import the skeleton component
 import { logger } from '@/app/utils/logger';
 
 const DEFAULT_COVER = '/images/default-cover.svg';
@@ -155,11 +156,7 @@ function MangaContent() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
-      </div>
-    );
+    return <ChapterListSkeleton />;
   }
 
   if (error) {
@@ -389,4 +386,4 @@ export default function MangaPage() {
       <MangaContent />
     </Suspense>
   );
-} 
+}

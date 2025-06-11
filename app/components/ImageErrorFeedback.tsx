@@ -6,11 +6,13 @@ import { AlertTriangle, X } from 'lucide-react'
 interface ImageErrorFeedbackProps {
   pageIndex: number
   onReport?: (pageIndex: number) => void
+  onRetry?: (pageIndex: number) => void; // Added onRetry prop
 }
 
 const ImageErrorFeedback: React.FC<ImageErrorFeedbackProps> = ({ 
   pageIndex, 
-  onReport 
+  onReport, 
+  onRetry // Added onRetry to destructuring
 }) => {
   const [isReported, setIsReported] = useState(false)
   const [isVisible, setIsVisible] = useState(true)
@@ -24,10 +26,26 @@ const ImageErrorFeedback: React.FC<ImageErrorFeedbackProps> = ({
     }, 2000)
   }
 
+  const handleRetry = () => {
+    onRetry?.(pageIndex);
+    // Reset visibility and reported state to allow the component to be shown again for a new retry attempt
+    setIsVisible(true); 
+    setIsReported(false); // Allow reporting again if retry also fails
+  }
+
   if (!isVisible) return null
 
   return (
-    <div className="absolute top-2 right-2 z-10">
+    <div className="absolute top-2 right-2 z-10 flex flex-col items-end space-y-2">
+      {onRetry && (
+        <button 
+          onClick={handleRetry}
+          className="p-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-500 transition-colors text-xs"
+          aria-label="Retry loading image"
+        >
+          Retry
+        </button>
+      )}
       {!isReported ? (
         <button
           onClick={handleReport}
