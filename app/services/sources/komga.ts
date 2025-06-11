@@ -16,8 +16,8 @@ export const komgaSource: Source = {
       // Komga API returns a list of series. We should fetch a reasonable number.
       // The search in multiSource.ts already limits Komga to 50.
       // Here, we adapt to return all items found by this specific source search.
-      const searchUrl = `${komgaApiUrl}/api/v1/series?search=${encodeURIComponent(title)}&size=50`; // Fetch up to 50 like in multiSource
-      
+      const searchUrl = `${komgaApiUrl}/api/v1/series?search=${encodeURIComponent(title)}&size=200`; // Fetch up to 200 like in multiSource
+
       const komgaUser = process.env.KOMGA_USERNAME;
       const komgaPassword = process.env.KOMGA_PASSWORD;
       const headers: HeadersInit = {};
