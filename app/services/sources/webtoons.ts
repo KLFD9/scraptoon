@@ -1,13 +1,15 @@
 import { Source, ChaptersResult, ChapterData } from '@/app/types/source';
 import { launchBrowser } from '@/app/utils/launchBrowser';
 import { logger } from '@/app/utils/logger';
+import { Cache } from '@/app/utils/cache';
+import type { Browser } from 'puppeteer';
 
 async function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-let browserPromise: Promise<any> | null = null;
-async function getBrowser(): Promise<any> {
+let browserPromise: Promise<Browser> | null = null;
+async function getBrowser(): Promise<Browser> {
   if (!browserPromise) {
     browserPromise = launchBrowser({
       headless: false,
@@ -25,22 +27,27 @@ async function getBrowser(): Promise<any> {
 }
 
 
-export const webtoonSource: Source = {
-  name: 'webtoons',
-  baseUrl: 'https://www.webtoons.com',
-  search: async (title: string) => {
+const searchCache = new Cache<{ titleId: string | null; url: string | null }>(3600_000);
+
 export const webtoonsSource: Source = {
   name: 'webtoons',
   baseUrl: 'https://www.webtoons.com',
   async search(title: string) {
+    const sanitizedTitle = title.replace(/[^a-zA-Z0-9\s'-]/g, '').trim();
+    const cacheKey = `webtoons_search_${sanitizedTitle.toLowerCase()}`;
+    const cached = await searchCache.get(cacheKey);
+    if (cached) {
+      logger.log('info', 'Résultat retourné depuis le cache', { query: sanitizedTitle });
+      return cached;
+    }
+
     try {
       const browser = await getBrowser();
       const page = await browser.newPage();
       await page.setViewport({ width: 1920, height: 1080 });
       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
 
-      const searchUrl = `${webtoonSource.baseUrl}/fr/search?keyword=${encodeURIComponent(title)}`;
-      const searchUrl = `${webtoonsSource.baseUrl}/fr/search?keyword=${encodeURIComponent(title)}`;
+      const searchUrl = `${webtoonsSource.baseUrl}/fr/search?keyword=${encodeURIComponent(sanitizedTitle)}`;
       logger.log('info', 'Recherche sur Webtoons', { query: title });
 
       await page.goto(searchUrl, { waitUntil: 'networkidle0' });
@@ -84,12 +91,16 @@ export const webtoonsSource: Source = {
       await page.close();
 
       if (result && result.score > 0.3) {
-        logger.log('info', 'Manga trouvé sur Webtoons', { query: title });
-        return { titleId: result.titleId, url: result.url };
+        logger.log('info', 'Manga trouvé sur Webtoons', { query: sanitizedTitle });
+        const output = { titleId: result.titleId, url: result.url } as const;
+        await searchCache.set(cacheKey, output);
+        return output;
       }
 
-      logger.log('info', 'Manga non trouvé sur Webtoons', { query: title });
-      return { titleId: null, url: null };
+      logger.log('info', 'Manga non trouvé sur Webtoons', { query: sanitizedTitle });
+      const emptyResult = { titleId: null, url: null } as const;
+      await searchCache.set(cacheKey, emptyResult);
+      return emptyResult;
 
     } catch (error) {
       logger.log('error', 'Erreur lors de la recherche sur Webtoons', {
@@ -99,7 +110,6 @@ export const webtoonsSource: Source = {
     }
   },
   
-  getChapters: async (titleId: string, url: string): Promise<ChaptersResult> => {
   async getChapters(titleId: string, url: string): Promise<ChaptersResult> {
     try {
       const browser = await getBrowser();
@@ -179,7 +189,6 @@ export const webtoonsSource: Source = {
         source: {
           name: 'webtoons',
           url: listUrl,
-          titleId: titleId
           titleId
         }
       };
@@ -193,5 +202,4 @@ export const webtoonsSource: Source = {
   }
 };
 
-export default webtoonSource;
 export default webtoonsSource;

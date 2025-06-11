@@ -1,37 +1,43 @@
-import { Source, ChaptersResult } from '@/app/types/source';
-import { logger } from '@/app/utils/logger';
-import { retry } from '@/app/utils/retry';
-import type { MangaDexChapter, MangaDexChaptersResponse } from '@/app/types/mangadex';
 import { Source, ChaptersResult, ChapterData } from '@/app/types/source';
 import type { MangaDexChapter, MangaDexChaptersResponse } from '@/app/types/mangadex';
 import { logger } from '@/app/utils/logger';
 import { retry } from '@/app/utils/retry';
+import { Cache } from '@/app/utils/cache';
+
+const searchCache = new Cache<{ titleId: string | null; url: string | null }>(3600_000);
+
+const fetchHttps = (url: string, options?: RequestInit) => {
+  if (!url.startsWith('https://')) {
+    throw new Error('Les requêtes externes doivent utiliser HTTPS');
+  }
+  return fetch(url, options);
+};
 
 export const mangadexSource: Source = {
   name: 'mangadex',
   baseUrl: 'https://api.mangadex.org',
-  search: async (title: string) => {
-    try {
-      logger.log('info', 'Recherche sur MangaDex API', { query: title });
-
-      const searchUrl = `${mangadexSource.baseUrl}/manga?title=${encodeURIComponent(title)}&limit=5&order[relevance]=desc`;
-      const response = await retry(() => fetch(searchUrl), 3, 1000);
-      const data = await response.json();
-
   async search(title: string) {
+    const sanitizedTitle = title.replace(/[^a-zA-Z0-9\s'-]/g, '').trim();
+    const cacheKey = `mangadex_search_${sanitizedTitle.toLowerCase()}`;
+    const cached = await searchCache.get(cacheKey);
+    if (cached) {
+      logger.log('info', 'Résultat retourné depuis le cache', { query: sanitizedTitle });
+      return cached;
+    }
+
     try {
-      logger.log('info', 'Recherche sur MangaDex API', { query: title });
-      const searchUrl = `${mangadexSource.baseUrl}/manga?title=${encodeURIComponent(title)}&limit=5&order[relevance]=desc`;
-      const response = await retry(() => fetch(searchUrl), 3, 1000);
+      logger.log('info', 'Recherche sur MangaDex API', { query: sanitizedTitle });
+      const searchUrl = `${mangadexSource.baseUrl}/manga?title=${encodeURIComponent(sanitizedTitle)}&limit=5&order[relevance]=desc`;
+      const response = await retry(() => fetchHttps(searchUrl), 3, 1000);
       const data = await response.json();
+
       if (!response.ok || !data.data?.length) {
-        logger.log('info', 'Manga non trouvé sur MangaDex', { query: title });
-        return { titleId: null, url: null };
+        logger.log('info', 'Manga non trouvé sur MangaDex', { query: sanitizedTitle });
+        const result = { titleId: null, url: null } as const;
+        await searchCache.set(cacheKey, result);
+        return result;
       }
 
-      const bestMatch = data.data[0];
-      const titleId = bestMatch.id;
-      const url = `https://mangadex.org/title/${titleId}`;
       const bestMatch = data.data[0];
       const titleId = bestMatch.id;
       const url = `https://mangadex.org/title/${titleId}`;
@@ -41,7 +47,9 @@ export const mangadexSource: Source = {
         title: bestMatch.attributes.title
       });
 
-      return { titleId, url };
+      const result = { titleId, url };
+      await searchCache.set(cacheKey, result);
+      return result;
     } catch (error) {
       logger.log('error', 'Erreur lors de la recherche sur MangaDex', {
         error: error instanceof Error ? error.message : 'Erreur inconnue'
@@ -50,24 +58,11 @@ export const mangadexSource: Source = {
     }
   },
 
-  getChapters: async (titleId: string, url: string): Promise<ChaptersResult> => {
-    try {
-      logger.log('info', 'Récupération des chapitres depuis MangaDex', { titleId, url });
-
-      const chaptersUrl = `${mangadexSource.baseUrl}/manga/${titleId}/feed?translatedLanguage[]=fr&translatedLanguage[]=en&order[chapter]=desc&limit=500`;
-      const response = await retry(() => fetch(chaptersUrl), 3, 1000);
-      const data: MangaDexChaptersResponse = await response.json();
-
-      if (!response.ok || !data.data?.length) {
-        throw new Error('Aucun chapitre trouvé');
-      }
-
-      const chapters = data.data.map((chapter: MangaDexChapter) => ({
   async getChapters(titleId: string, url: string): Promise<ChaptersResult> {
     try {
       logger.log('info', 'Récupération des chapitres depuis MangaDex', { titleId, url });
       const chaptersUrl = `${mangadexSource.baseUrl}/manga/${titleId}/feed?translatedLanguage[]=fr&translatedLanguage[]=en&order[chapter]=desc&limit=500`;
-      const response = await retry(() => fetch(chaptersUrl), 3, 1000);
+      const response = await retry(() => fetchHttps(chaptersUrl), 3, 1000);
       const data: MangaDexChaptersResponse = await response.json();
       if (!response.ok || !data.data?.length) {
         throw new Error('Aucun chapitre trouvé');
@@ -92,11 +87,7 @@ export const mangadexSource: Source = {
         chapters,
         totalChapters: chapters.length,
         source: {
-          name: 'mangadx',
-          url: url,
-          titleId: titleId
-        }
-      };
+          name: 'mangadex',
           url,
           titleId
         }

@@ -87,6 +87,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 - Chapters are fetched concurrently from MangaDex, Webtoons and Komga, returning the fastest result.
 - Source handlers live under `app/services/sources` for easier maintenance.
 - Cache writes are awaited and errors are logged for easier debugging.
+- Search results from MangaDex and Webtoons are cached for an hour to reduce network calls.
  - Multi-source search aggregates MangaDex, Kitsu and Komga before falling back to scraping.
  - Chapters are fetched concurrently from MangaDex, Webtoons and Komga, returning the fastest result.
 - Connection pooling via `undici` enables HTTP/2 requests with configurable concurrency.
