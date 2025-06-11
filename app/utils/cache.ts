@@ -30,7 +30,7 @@ export class Cache<T = unknown> {
       const client = await getRedisClient();
       await client.setEx(key, Math.floor(this.ttl / 1000), JSON.stringify(data));
     } catch (err) {
-      logger.log('error', 'Redis set error', { error: String(err), key });
+      logger.log('error', 'Redis set error', { error: String(err) });
     }
   }
 
@@ -52,8 +52,30 @@ export class Cache<T = unknown> {
         return data;
       }
     } catch (err) {
-      logger.log('error', 'Redis get error', { error: String(err), key });
+      logger.log('error', 'Redis get error', { error: String(err) });
     }
     return null;
+  }
+
+  async clear(): Promise<void> {
+    // Vider le cache mémoire
+    this.memoryCache = {};
+    try {
+      // Vider Redis (toutes les clés)
+      const client = await getRedisClient();
+      await client.flushAll();
+    } catch (err) {
+      logger.log('error', 'Redis clear error', { error: String(err) });
+    }
+  }
+
+  async delete(key: string): Promise<void> {
+    delete this.memoryCache[key];
+    try {
+      const client = await getRedisClient();
+      await client.del(key);
+    } catch (err) {
+      logger.log('error', 'Redis delete error', { error: String(err) });
+    }
   }
 }

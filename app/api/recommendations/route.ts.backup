@@ -44,9 +44,9 @@ function convertMangaDxToManga(mangadx: MangaDexManga): Manga {
   const coverRelation = mangadx.relationships?.find(
     (rel: MangaDexRelationship) => rel.type === 'cover_art'
   );
-  const fileName = coverRelation?.attributes?.fileName;
-  const cover = fileName 
-    ? `https://uploads.mangadex.org/covers/${mangadx.id}/${fileName}`
+  const coverId = coverRelation?.id;
+  const cover = coverId 
+    ? `https://uploads.mangadex.org/covers/${mangadx.id}/${coverId}.512.jpg`
     : '/images/manga-placeholder.svg';
 
   // Déterminer le type basé sur les tags ou le pays d'origine
@@ -441,7 +441,7 @@ async function generateRecommendations(
 
   await cache.set(cacheKey, recommendations);
   return recommendations;
-} // Ensuring getRecommendations function is properly closed
+}
 
 export async function POST(request: Request) {
   try {
@@ -458,24 +458,21 @@ export async function POST(request: Request) {
             .map((id) => String(id));
         }
       } catch (err) {
-        console.error('Failed to parse reading_history cookie:', err); // Added logging for robustness
+        logger.log('warning', 'Invalid reading_history cookie', {
+          error: String(err),
+        });
       }
     }
 
-    // Assuming the recommendations logic using history and favorites will be here
-    // For now, let's just return a placeholder based on the main logic's structure
-    const finalRecommendations = await generateRecommendations(history, favorites, limit); // Corrected: Used suggested function name
-    return new Response(JSON.stringify(finalRecommendations), {
-      headers: { 'Content-Type': 'application/json' },
-    });
+    const recommendations = await generateRecommendations(history, favorites, Number(limit));
 
-  } catch (error) { // Added catch for the main try block in POST
-    console.error('Error in POST /recommendations:', error);
-    // It's good practice to return a proper error response
-    return new Response(JSON.stringify({ message: 'Internal Server Error' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return NextResponse.json({ success: true, results: recommendations, cached: false });
+  } catch (error) {
+    logger.log('error', 'Erreur génération recommandations', { error: String(error) });
+    return NextResponse.json(
+      { success: false, error: 'Erreur lors des recommandations' },
+      { status: 500 }
+    );
   }
 }
 

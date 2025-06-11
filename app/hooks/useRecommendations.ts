@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useFavorites } from './useFavorites';
 import type { Manga } from '../types/manga';
 import { logger } from '../utils/logger';
+import { RecommendationsService } from '../services/recommendationsService';
 
 const CACHE_KEY = 'user_recommendations';
 const CACHE_EXPIRY = `${CACHE_KEY}_expiry`;
@@ -10,157 +11,76 @@ export function useRecommendations(limit: number = 6) {
   const { favorites } = useFavorites();
   const [recommendations, setRecommendations] = useState<Manga[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);  const fetchRecommendations = useCallback(async () => {
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchRecommendations = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Créer une clé de cache unique basée sur les favoris
-      const favoritesKey = favorites.map(f => f.id).sort().join('_');
-      const CACHE_KEY_WITH_FAVORITES = `${CACHE_KEY}_${favoritesKey}`;
-      const CACHE_EXPIRY_WITH_FAVORITES = `${CACHE_EXPIRY}_${favoritesKey}`;
-
-      // Vérifier le cache seulement si il correspond aux favoris actuels
-      const expiry = localStorage.getItem(CACHE_EXPIRY_WITH_FAVORITES);
-      const cached = localStorage.getItem(CACHE_KEY_WITH_FAVORITES);
-      
-      if (expiry && cached && Date.now() < Number(expiry)) {
-        const cachedData = JSON.parse(cached) as Manga[];
-        setRecommendations(cachedData);
-        setLoading(false);
-        logger.log('info', 'recommendations loaded from cache', {
-          count: cachedData.length
-        });
-        return;
-      }
-
-      // Nettoyer les anciens caches
-      const allKeys = Object.keys(localStorage);
-      allKeys.forEach(key => {
-        if (key.startsWith(CACHE_KEY) && key !== CACHE_KEY_WITH_FAVORITES) {
-          localStorage.removeItem(key);
-        }
-        if (key.startsWith(CACHE_EXPIRY) && key !== CACHE_EXPIRY_WITH_FAVORITES) {
-          localStorage.removeItem(key);
-        }
+      logger.log('info', '🔄 Chargement des recommandations', {
+        favoritesCount: favorites.length,
+        limit
       });
 
-      logger.log('info', 'fetching recommendations from API');
-
-      // Essayer l'API principale en premier
-      let resp = await fetch('/api/recommendations', {
-        method: 'POST',
-        credentials: 'include',
-        cache: 'no-cache',
-        headers: {
-          'Content-Type': 'application/json',
-        },        body: JSON.stringify({
-          limit,
-          favorites: favorites.map((f) => {
-            // Mapping des types de langue vers types de contenu
-            let contentType: 'manga' | 'manhwa' | 'manhua' = 'manga';
-            const langType = f.type as string;
-            if (langType === 'ko') contentType = 'manhwa';
-            else if (langType === 'zh' || langType === 'zh-hk') contentType = 'manhua';
-            else contentType = 'manga'; // ja ou autres -> manga
-            
-            return { 
-              id: f.id, 
-              author: f.author,
-              type: contentType
-            };
-          }),
-        }),
-      });
-
-      // Si l'API principale échoue, utiliser l'API mock
-      if (!resp.ok) {
-        logger.log('warning', 'main API failed, trying mock API');
-        resp = await fetch('/api/recommendations/mock', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ limit }),
-        });
-      }
-
-      if (!resp.ok) {
-        throw new Error(`HTTP Error ${resp.status}`);
-      }
-
-      const data = await resp.json();
-      logger.log('info', 'API response received');
-      if (data.success && Array.isArray(data.results)) {
-        setRecommendations(data.results);
-        // Utiliser la clé de cache personnalisée
-        const favoritesKey = favorites.map(f => f.id).sort().join('_');
-        const CACHE_KEY_WITH_FAVORITES = `${CACHE_KEY}_${favoritesKey}`;
-        const CACHE_EXPIRY_WITH_FAVORITES = `${CACHE_EXPIRY}_${favoritesKey}`;
+      // Préparer la requête avec les favoris réels
+      const favoritesData = favorites.map((fav) => {
+        // Mapping des types de langue vers types de contenu
+        let contentType: 'manga' | 'manhwa' | 'manhua' = 'manga';
         
-        localStorage.setItem(CACHE_KEY_WITH_FAVORITES, JSON.stringify(data.results));
-        localStorage.setItem(
-          CACHE_EXPIRY_WITH_FAVORITES,
-          (Date.now() + 60 * 60 * 1000).toString()
-        );
-        logger.log('info', 'recommendations loaded from API', {
-          count: data.results.length
+        // Utiliser le type existant du favori s'il est défini
+        if (fav.type === 'manhwa' || fav.type === 'manhua' || fav.type === 'manga') {
+          contentType = fav.type;
+        } else {
+          // Fallback basé sur d'autres critères
+          const langType = fav.type as string;
+          if (langType === 'ko') contentType = 'manhwa';
+          else if (langType === 'zh' || langType === 'zh-hk') contentType = 'manhua';
+          else contentType = 'manga';
+        }
+        
+        return { 
+          id: fav.id, 
+          title: fav.title, // Ajouter le titre pour l'analyse
+          author: fav.author,
+          type: contentType
+        };
+      });
+
+      logger.log('info', '📋 Données favoris préparées', {
+        count: favoritesData.length
+      });
+
+      // Utiliser le nouveau service
+      const response = await RecommendationsService.getRecommendations({
+        limit,
+        favorites: favoritesData
+      });
+
+      if (response.success && response.results) {
+        setRecommendations(response.results);
+        logger.log('info', '✅ Recommandations chargées avec succès', {
+          count: response.results.length
         });
       } else {
-        throw new Error(data.error || 'API error - invalid response format');
+        throw new Error(response.error || 'Erreur lors du chargement des recommandations');
       }
+
     } catch (err) {
-      logger.log('error', 'recommendations fetch error', {
+      logger.log('error', '❌ Erreur lors du chargement des recommandations', {
         error: String(err)
       });
       setError(err instanceof Error ? err.message : 'Erreur inconnue');
       
-      // En cas d'erreur totale, essayer de charger des données de base
-      try {
-        const basicRecommendations: Manga[] = [
-          {
-            id: 'basic-1',
-            title: 'One Piece',
-            description: 'Les aventures de Monkey D. Luffy',
-            cover: '/vercel.svg',
-            url: '/manga/one-piece',
-            type: 'manga',
-            status: 'ongoing',
-            lastChapter: '1000+',
-            chapterCount: { french: 1000, total: 1100 }
-          },
-          {
-            id: 'basic-2',
-            title: 'Attack on Titan',
-            description: 'L\'humanité contre les titans',
-            cover: '/vercel.svg',
-            url: '/manga/attack-on-titan',
-            type: 'manga',
-            status: 'completed',
-            lastChapter: '139',
-            chapterCount: { french: 139, total: 139 }
-          }
-        ];
-        setRecommendations(basicRecommendations.slice(0, limit));
-        logger.log('info', 'basic data loaded as fallback');
-      } catch (basicErr) {
-        logger.log('error', 'failed to load even basic data', {
-          error: String(basicErr)
-        });
-      }
+      // Fallback avec des recommendations basiques
+      setRecommendations(RecommendationsService.getFallbackRecommendations(limit));
     } finally {
       setLoading(false);
     }
   }, [limit, favorites]);
+
   const refetch = useCallback(() => {
-    // Nettoyer tous les caches de recommandations pour forcer un refresh
-    const allKeys = Object.keys(localStorage);
-    allKeys.forEach(key => {
-      if (key.startsWith(CACHE_KEY) || key.startsWith(CACHE_EXPIRY)) {
-        localStorage.removeItem(key);
-      }
-    });
-    logger.log('info', 'recommendations cache cleared for refresh');
+    logger.log('info', '🔄 Rechargement forcé des recommandations');
     fetchRecommendations();
   }, [fetchRecommendations]);
 

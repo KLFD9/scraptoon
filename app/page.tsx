@@ -11,8 +11,8 @@ import { scrapeManga } from './services/scraping.service';
 import { useFavorites } from './hooks/useFavorites';
 import ModernRecommendationsSection from './components/ModernRecommendationsSection';
 import NewestSection from './components/NewestSection';
-import TrendingSection from './components/TrendingSection';
 import ThematicCollectionsSection from './components/ThematicCollectionsSection';
+import BestSellersSection from './components/BestSellersSection';
 import { BookmarkPlus, BookOpen, Search, TrendingUp } from 'lucide-react';
 import { logger } from '@/app/utils/logger';
 import Link from 'next/link';
@@ -136,16 +136,19 @@ export default function Home() {
                   </p>
                 </div>
 
-                {/* Continue Reading */}
+                {/* Continue Reading - priorité pour la reprise de lecture */}
                 <ContinueReading />
                 
-                {/* New Sections */}
+                {/* Nouveautés - découverte de nouveaux titres */}
                 <NewestSection onSearch={handleSearch} />
                 
-                {/* Modern Recommendations Section */}
+                {/* Best-sellers - contenus populaires et de qualité */}
+                <BestSellersSection onSearch={handleSearch} />
+                
+                {/* Recommendations personnalisées basées sur les favoris */}
                 <ModernRecommendationsSection onSearch={handleSearch} />
                 
-                <TrendingSection onSearch={handleSearch} />
+                {/* Collections thématiques pour la découverte par genre */}
                 <ThematicCollectionsSection onSearch={handleSearch} />
                 
                 {/* Recherches récentes */}
@@ -188,6 +191,34 @@ export default function Home() {
               </div>
             )}
           </div>
+
+          {/* Footer */}
+          <footer className="bg-gray-950 border-t border-gray-800">
+            <div className="max-w-7xl mx-auto px-4 py-8">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="text-center sm:text-left">
+                  <p className="text-gray-400 text-sm">
+                    &copy; {new Date().getFullYear()} Woons. Tous droits réservés.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center gap-4">
+                  <Link href="/about" className="text-gray-300 hover:text-white transition-colors">
+                    À propos
+                  </Link>
+                  <Link href="/contact" className="text-gray-300 hover:text-white transition-colors">
+                    Contact
+                  </Link>
+                  <Link href="/privacy" className="text-gray-300 hover:text-white transition-colors">
+                    Politique de confidentialité
+                  </Link>
+                  <Link href="/terms" className="text-gray-300 hover:text-white transition-colors">
+                    Conditions d'utilisation
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </footer>
         </div>
       </ClientOnly>
     </Layout>
