@@ -2,11 +2,11 @@ import { Source, ChaptersResult } from '@/app/types/source';
 import { logger } from '@/app/utils/logger';
 import { retry } from '@/app/utils/retry';
 
+
 export const komgaSource: Source = {
   name: 'komga',
   baseUrl: process.env.KOMGA_URL || '',
   search: async (title: string) => {
-  async search(title: string) {
     try {
       if (!process.env.KOMGA_URL) {
         return { titleId: null, url: null };
@@ -29,7 +29,6 @@ export const komgaSource: Source = {
     }
   },
   getChapters: async (titleId: string, url: string): Promise<ChaptersResult> => {
-  async getChapters(titleId: string, url: string): Promise<ChaptersResult> {
     const komgaBaseUrl = process.env.KOMGA_URL;
     if (!komgaBaseUrl) {
       throw new Error('KOMGA_URL not configured');

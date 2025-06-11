@@ -3,20 +3,12 @@ import { Cache } from '@/app/utils/cache';
 import { logger } from '@/app/utils/logger';
 import { retry } from '@/app/utils/retry';
 import type { MangaDexChapter, MangaDexChaptersResponse } from '@/app/types/mangadex';
-import type { Source, ChaptersResult, ChapterData, SourceSearchResult, SourceInfo } from '@/app/types/source';
-import { getAllSources } from '@/app/services/sources';
-import type { ChapterData, ChaptersResult, Source, SourceSearchResult, SourceInfo } from '@/app/types/source';
-import { mangadexSource, webtoonsSource, komgaSource, toomicsSource } from '@/app/services/sources';
+import type { Source, ChaptersResult, ChapterData, SourceSearchResult } from '@/app/types/source';
+import { getAllSources, mangadexSource, webtoonsSource, komgaSource, toomicsSource } from '@/app/services/sources';
 
-interface ChaptersCacheData extends ChaptersResult {
-  source: SourceInfo;
-}
 
-const chaptersCache = new Cache<ChaptersCacheData>(7200000);
 
-const sources: Source[] = getAllSources();
-const chaptersCache = new Cache<ChaptersCacheData>(7200000);
-
+const chaptersCache = new Cache<ChaptersResult & { source: { name: string; url: string; titleId: string } }>(7200000);
 const sources: Source[] = [
   mangadexSource,
   webtoonsSource,
@@ -43,13 +35,6 @@ async function searchAllSources(mangaTitle: string): Promise<SourceSearchResult[
   });
   const results = await Promise.all(searchPromises);
   return results.filter((result): result is SourceSearchResult => result !== null);
-}
-
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
-  return results.filter((r): r is SourceSearchResult => r !== null);
 }
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
@@ -102,7 +87,7 @@ export async function GET(request: Request, { params }: { params: { id: string }
     }
     logger.log('info', 'Récupération des chapitres en parallèle', { source: sourceResults.map(r => r.source).join(', ') });
     const chapterPromises = sourceResults.map(r => r.sourceObj.getChapters(r.titleId, r.url).then(data => ({ ...data, source: { name: r.source, url: r.url, titleId: r.titleId } })));
-    let resultData: { chapters: ChapterData[]; totalChapters: number; source: SourceInfo };
+    let resultData: { chapters: ChapterData[]; totalChapters: number; source: { name: string; url: string; titleId: string } };
     try {
       resultData = await Promise.any(chapterPromises);
     } catch {
@@ -182,7 +167,7 @@ function sortChapters(chapters: ChapterData[], sortBy: string = 'chapter-asc'): 
 }
 
 function formatResponse(
-  data: ChaptersResult & { source: SourceInfo },
+  data: ChaptersResult & { source: { name: string; url: string; titleId: string } },
   page: number,
   limit: number,
   sortBy: string = 'chapter-asc'

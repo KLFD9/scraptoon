@@ -55,7 +55,8 @@ export interface LogData {
   reason?: string;
   candidate?: string;
   favorite?: string;
-  commonWords?: string[];  total?: number;
+  commonWords?: string[];
+  total?: number;
   sourceResults?: any;
   resultsCount?: number;
   historyCount?: number;
@@ -76,6 +77,11 @@ export interface LogData {
   index?: number;
   chapterId?: string;
   redisUrl?: string;
+  config?: string; // Added
+  step?: number; // Added
+  selector?: string; // Added
+  language?: string; // Added
+  images?: number | string[]; // Added
 }
 
 export const logger = {
