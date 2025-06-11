@@ -1,20 +1,24 @@
 import { Source } from '@/app/types/source';
 import toomicsSource from './toomics';
+import webtoonSource from './webtoons';
+import komgaSource from './komga';
+import mangaScantradSource from './mangascantrad';
+import mangadexSource from './mangadex';
 
-// Exportation de toutes les sources disponibles
 export const sources: Record<string, Source> = {
   toomics: toomicsSource,
+  webtoons: webtoonSource,
+  komga: komgaSource,
+  mangascantrad: mangaScantradSource,
+  mangadex: mangadexSource
 };
 
-// Exportation individuelle des sources
-export { toomicsSource };
+export { toomicsSource, webtoonSource, komgaSource, mangaScantradSource, mangadexSource };
 
-// Fonction utilitaire pour obtenir toutes les sources
 export function getAllSources(): Source[] {
   return Object.values(sources);
 }
 
-// Fonction utilitaire pour obtenir une source par son nom
 export function getSource(name: string): Source | undefined {
   return sources[name];
 }
