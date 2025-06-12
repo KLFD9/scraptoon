@@ -67,6 +67,7 @@ function convertMangaDxToManga(mangadx: MangaDexManga): Manga {
     description,
     cover,
     url: `/manga/${mangadx.id}`,
+    source: 'mangadex', // Added source
     type,
     status: mangadx.attributes.status === 'completed' ? 'completed' : 'ongoing',
     lastChapter: mangadx.attributes.lastChapter || 'N/A',
@@ -357,6 +358,7 @@ async function generateRecommendations(
           description: 'Romance dramatique entre étudiants et professeurs.',
           cover: '/images/manga-placeholder.svg',
           url: '/manga/domestic-girlfriend',
+          source: 'fallback', // Added source
           type: 'manga' as const,
           status: 'completed' as const,
           lastChapter: '276',
@@ -370,6 +372,7 @@ async function generateRecommendations(
           description: 'Comédie et romance dans un lycée strict.',
           cover: '/images/manga-placeholder.svg',
           url: '/manga/prison-school',
+          source: 'fallback', // Added source
           type: 'manga' as const,
           status: 'completed' as const,
           lastChapter: '277',
@@ -383,6 +386,7 @@ async function generateRecommendations(
           description: 'Romance avec des créatures fantastiques.',
           cover: '/images/manga-placeholder.svg',
           url: '/manga/monster-musume',
+          source: 'fallback', // Added source
           type: 'manga' as const,
           status: 'ongoing' as const,
           lastChapter: '80+',
@@ -400,6 +404,7 @@ async function generateRecommendations(
           description: 'Les aventures épiques de Monkey D. Luffy et son équipage à la recherche du trésor légendaire One Piece.',
           cover: '/images/manga-placeholder.svg',
           url: '/manga/one-piece',
+          source: 'fallback', // Added source
           type: 'manga' as const,
           status: 'ongoing' as const,
           lastChapter: '1100+',
@@ -413,6 +418,7 @@ async function generateRecommendations(
           description: 'L\'humanité lutte pour sa survie contre des géants mangeurs d\'hommes.',
           cover: '/images/manga-placeholder.svg',
           url: '/manga/attack-on-titan',
+          source: 'fallback', // Added source
           type: 'manga' as const,
           status: 'completed' as const,
           lastChapter: '139',
@@ -426,6 +432,7 @@ async function generateRecommendations(
           description: 'Un chasseur faible devient le plus puissant au monde.',
           cover: '/images/manga-placeholder.svg',
           url: '/manga/solo-leveling',
+          source: 'fallback', // Added source
           type: 'manhwa' as const,
           status: 'completed' as const,
           lastChapter: '179',
